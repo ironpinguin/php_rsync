@@ -186,6 +186,7 @@ PHP_MINIT_FUNCTION(rsync)
 
 	INIT_CLASS_ENTRY(ce, RSYNC_CLASS_NAME, Rsync_methods);
 	Rsync_ce = zend_register_internal_class(&ce TSRMLS_CC);
+	Rsync_ca->create_object = php_rsync_new;
 
 	REGISTER_LONG_CONSTANT("RSYNC_DONE", 0, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RSYNC_BLOCKED", 1, CONST_CS | CONST_PERSISTENT);
