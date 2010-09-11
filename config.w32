@@ -1,0 +1,13 @@
+// $Id$
+// vim:ft=javascript
+
+// If your extension references something external, use ARG_WITH
+ARG_WITH("rsync", "for rsync support", "no");
+
+// Otherwise, use ARG_ENABLE
+// ARG_ENABLE("rsync", "enable rsync support", "no");
+
+if (PHP_RSYNC != "no") {
+	EXTENSION("rsync", "rsync.c");
+}
+

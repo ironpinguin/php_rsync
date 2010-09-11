@@ -1,0 +1,78 @@
+dnl $Id$
+dnl config.m4 for extension rsync
+
+dnl Comments in this file start with the string 'dnl'.
+dnl Remove where necessary. This file will not work
+dnl without editing.
+
+dnl If your extension references something external, use with:
+
+PHP_ARG_WITH(rsync, for rsync support,
+dnl Make sure that the comment is aligned:
+[  --with-rsync             Include rsync support], yes, no)
+
+dnl Otherwise use enable:
+
+dnl PHP_ARG_ENABLE(rsync, whether to enable rsync support,
+dnl Make sure that the comment is aligned:
+dnl [  --enable-rsync           Enable rsync support])
+
+if test "$PHP_RSYNC" != "no" && test "$PHP_RSYNC" != "yes"; then
+  dnl # --with-rsync -> check with-path
+  SEARCH_PATH="/usr/local /usr"     # you might want to change this
+  SEARCH_FOR="/include/librsync.h"  # you most likely want to change this
+  if test -r $PHP_RSYNC/$SEARCH_FOR; then # path given as parameter
+    RSYNC_DIR=$PHP_RSYNC
+  else # search default path list
+    AC_MSG_CHECKING([for rsync files in default path])
+    for i in $SEARCH_PATH ; do
+      if test -r $i/$SEARCH_FOR; then
+        RSYNC_DIR=$i
+        AC_MSG_RESULT(found in $i)
+      fi
+    done
+  fi
+  
+  if test -z "$RSYNC_DIR"; then
+    AC_MSG_RESULT([not found])
+    AC_MSG_ERROR([Please reinstall the rsync distribution])
+  fi
+
+  dnl # --with-rsync -> add include path
+  PHP_ADD_INCLUDE($RSYNC_DIR/include)
+
+  dnl # --with-rsync -> check for lib and symbol presence
+  LIBNAME=rsync # you may want to change this
+  LIBSYMBOL=rs_librsync_version # you most likely want to change this 
+
+  PHP_CHECK_LIBRARY($LIBNAME,$LIBSYMBOL,
+  [
+    PHP_ADD_LIBRARY_WITH_PATH($LIBNAME, $RSYNC_DIR/lib, RSYNC_SHARED_LIBADD)
+    AC_DEFINE(HAVE_RSYNCLIB,1,[ ])
+  ],[
+    AC_MSG_ERROR([wrong rsync lib version or lib not found])
+  ],[
+    -L$RSYNC_DIR/lib -lm
+  ])
+
+  PHP_SUBST(RSYNC_SHARED_LIBADD)
+
+  PHP_NEW_EXTENSION(rsync, rsync.c, $ext_shared)
+else
+  AC_MSG_CHECKING([for rsync library to use])
+  AC_MSG_RESULT([bundled]) 
+  librsync_sources="librsync/base64.c librsync/buf.c librsync/checksum.c \
+                 librsync/command.c librsync/delta.c librsync/emit.c \
+                 librsync/fileutil.c librsync/hex.c librsync/isprefix.c \
+                 librsync/job.c librsync/mdfour.c librsync/mksum.c \
+                 librsync/msg.c librsync/netint.c librsync/patch.c \
+                 librsync/prototab.c librsync/rdiff.c librsync/readsums.c \
+                 librsync/rollsum.c librsync/scoop.c librsync/search.c \
+                 librsync/snprintf.c librsync/stats.c librsync/stream.c \
+                 librsync/sumset.c librsync/trace.c librsync/tube.c \
+                 librsync/util.c librsync/version.c librsync/whole.c"
+  PHP_NEW_EXTENSION(rsync, $librsync_sources rsync.c, $ext_shared,,-Ilibrsync)
+  PHP_ADD_BUILD_DIR($ext_builddir/rsync) 
+  dnl PHP_INSTALL_HEADERS([ext/rsync], [php_rsync.h librsync/]) 
+  AC_DEFINE(HAVE_BUNDLED_LIBRSYNC, 1, [ ]) 
+fi
