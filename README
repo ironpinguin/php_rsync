@@ -1,0 +1,4 @@
+php extension for librsync.
+
+include the posibility to php to generate signatur files, patches and patch files with the rsync functionality.
+
