@@ -276,7 +276,7 @@ PHP_MINFO_FUNCTION(rsync)
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_signature, 0, 0, 2)
 	ZEND_ARG_INFO(0, file)
-ND_ARG_INFO(0, signaturfile)
+    ZEND_ARG_INFO(0, signaturfile)
 	ZEND_ARG_INFO(0, block_length)
 	ZEND_ARG_INFO(0, strong_length)
 ZEND_END_ARG_INFO()
@@ -293,6 +293,12 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_patch_file, 0, 0, 3)
 	ZEND_ARG_INFO(0, newfile)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_patchFile, 0, 0, 3)
+    ZEND_ARG_INFO(0, originalfilestring)
+    ZEND_ARG_INFO(0, deltafilestring)
+    ZEND_ARG_INFO(0, newfile)
+ZEND_END_ARG_INFO()
+
 /* }}} */
 /* The previous line is meant for vim and emacs, so it can correctly fold and 
    unfold functions in source code. See the corresponding marks just before 
@@ -305,7 +311,7 @@ ZEND_END_ARG_INFO()
 PHP_METHOD(Rsync, __construct)
 {
 	int block_len = RS_DEFAULT_BLOCK_LEN;
-        int strong_len = RS_DEFAULT_STRONG_LEN;
+    int strong_len = RS_DEFAULT_STRONG_LEN;
 	zval *object = getThis();
 	struct rsync_object *intern = (struct rsync_object *) zend_object_store_get_object(object TSRMLS_CC);
 
@@ -327,6 +333,39 @@ PHP_METHOD(Rsync, __construct)
 	patch a single file */
 PHP_METHOD(Rsync, patchFile)
 {
+	char *orig_file;
+	int orig_file_len;
+	char *delta_file;
+	int delta_file_len;
+	char *new_file;
+	int new_file_len;
+	php_stream *orig_file_stream, *delta_file_stream, *new_file_stream;
+	FILE *orig_file_h, *delta_file_h, *new_file_h;
+	zval *object = getThis();
+	struct rsync_object *intern = (struct rsync_object *) zend_object_store_get_object(object TSRMLS_CC);
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss", &orig_file, &orig_file_len, &delta_file, &delta_file_len,
+					&new_file, &new_file_len) == FAILURE) {
+		zend_throw_exception_ex(zend_exception_get_default(TSRMLS_C),
+				0 TSRMLS_CC, "Invalid parameters");
+		RETURN_FALSE;
+	}
+
+	orig_file_stream = php_stream_memory_open("rb", orig_file, orig_file_len);
+	delta_file_stream = php_stream_memory_open("rb", delta_file, delta_file_len);
+	new_file_stream = php_rsync_file_open(estrdup(new_file), "wb");
+	php_stream_cast(orig_file_stream, PHP_STREAM_AS_STDIO, (void**)&orig_file_h, 1);
+	php_stream_cast(delta_file_stream, PHP_STREAM_AS_STDIO, (void**)&delta_file_h, 1);
+	php_stream_cast(new_file_stream, PHP_STREAM_AS_STDIO, (void**)&new_file_h, 1);
+
+	intern->ret = rs_patch_file(orig_file_h, delta_file_h, new_file_h, &intern->stats);
+
+	php_stream_close(basisfile_stream);
+	php_stream_close(newfile_stream);
+	php_stream_close(deltafile_stream);
+
+	RETURN_LONG(ret);
+
 }
 /* }}} */
 
