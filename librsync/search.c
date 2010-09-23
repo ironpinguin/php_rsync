@@ -121,10 +121,6 @@ rs_search_for_block(rs_weak_sum_t weak_sum,
 {
     int                     hash_tag = gettag(weak_sum);
     int						j = sig->tag_table[hash_tag];
-    /*int                     j = NULL_TAG;
-    if (sig->tag_table) {
-    	j = sig->tag_table[hash_tag];
-    }*/
     rs_strong_sum_t         strong_sum;
     int                     got_strong = 0;
 
