@@ -31,18 +31,6 @@
 
 ZEND_DECLARE_MODULE_GLOBALS(rsync)
 
-#define RSYNC_GETOBJ() \
-	zval *this = getThis(); \
-	rsync_object *intern; \
-	zval *res; \
-	if(this){ \
-		intern  =   (rsync_object*) zend_object_store_get_object(getThis() TSRMLS_CC); \
-		if(!intern){ \
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid or unitialized rsync object"); \
-			RETURN_FALSE; \
-		} \
-	}
-
 /* True global resources - no need for thread safety here */
 static int le_rsync;
 
