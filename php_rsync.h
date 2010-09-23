@@ -36,21 +36,7 @@ extern zend_module_entry rsync_module_entry;
 #include "TSRM.h"
 #endif
 
-typedef struct rsync_object {
-	zend_object zo;
-	int block_len;
-        int strong_len;
-        rs_stats_t stats;
-        rs_result ret;
-} rsync_object;
-
 #define RSYNC_HAVE_PHP_53 ZEND_MODULE_API_NO >= 20071006
-
-#if RSYNC_HAVE_PHP_53
-#define RSYNC_CLASS_NAME "Rsync\\Rsync"
-#else
-#define RSYNC_CLASS_NAME "Rsync"
-#endif
 
 PHP_MINIT_FUNCTION(rsync);
 PHP_MSHUTDOWN_FUNCTION(rsync);
@@ -61,9 +47,6 @@ PHP_MINFO_FUNCTION(rsync);
 PHP_FUNCTION(rsync_generate_signature);
 PHP_FUNCTION(rsync_generate_delta);
 PHP_FUNCTION(rsync_patch_file);
-
-PHP_METHOD(Rsync, __construct);
-PHP_METHOD(Rsync, patchFile);
 
 ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	char *tmp_dir;

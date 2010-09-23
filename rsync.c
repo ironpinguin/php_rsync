@@ -58,44 +58,6 @@ const zend_function_entry rsync_functions[] = {
 };
 /* }}} */
 
-/**
- * Class definitions
- */
-zend_class_entry *Rsync_ce;
-
-const zend_function_entry Rsync_methods[] = {
-		PHP_ME(Rsync, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-		PHP_ME(Rsync, patchFile, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-		{NULL, NULL, NULL}
-};
-
-/**
- * Cleanup function for the object storage
- */
-static void php_rsync_free_storage(struct rsync_object *intern TSRMLS_DC)
-{
-	zend_object_std_dtor(&intern->zo TSRMLS_CC);
-	efree(intern);
-}
-
-/**
- * Object init function
- */
-static zend_object_value php_rsync_new(zend_class_entry *ce TSRMLS_DC)
-{
-	zend_object_value retval;
-	struct rsync_object *intern;
-	zval *tmp;
-
-	intern = ecalloc(1, sizeof(intern));
-	intern->block_len = RS_DEFAULT_BLOCK_LEN;
-        intern->strong_len = RS_DEFAULT_STRONG_LEN;
-	zend_object_std_init(&intern->zo, ce TSRMLS_CC);
-        retval.handle = zend_objects_store_put(intern, NULL, (zend_objects_free_object_storage_t)php_rsync_free_storage, NULL TSRMLS_CC);
-        retval.handlers = zend_get_std_object_handlers();
-
-        return retval;
-}
 /* {{{ersync_module_entry
  */
 zend_module_entry rsync_module_entry = {
@@ -181,12 +143,6 @@ void php_rsync_globals_dtor(zend_rsync_globals  *rsync_globals TSRMLS_DC)
 PHP_MINIT_FUNCTION(rsync)
 {
 	ZEND_INIT_MODULE_GLOBALS(rsync, php_rsync_globals_ctor, php_rsync_globals_dtor);
-
-	zend_class_entry ce;
-
-	INIT_CLASS_ENTRY(ce, RSYNC_CLASS_NAME, Rsync_methods);
-	Rsync_ce = zend_register_internal_class(&ce TSRMLS_CC);
-	Rsync_ca->create_object = php_rsync_new;
 
 	REGISTER_LONG_CONSTANT("RSYNC_DONE", 0, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RSYNC_BLOCKED", 1, CONST_CS | CONST_PERSISTENT);
@@ -276,7 +232,7 @@ PHP_MINFO_FUNCTION(rsync)
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_signature, 0, 0, 2)
 	ZEND_ARG_INFO(0, file)
-ND_ARG_INFO(0, signaturfile)
+	ZEND_ARG_INFO(0, signaturfile)
 	ZEND_ARG_INFO(0, block_length)
 	ZEND_ARG_INFO(0, strong_length)
 ZEND_END_ARG_INFO()
@@ -299,36 +255,6 @@ ZEND_END_ARG_INFO()
    function definition, where the functions purpose is also documented. Please 
    follow this convention for the convenience of others editing your code.
 */
-
-/* {{{ proto Rsync Rsync::__construct(void)
-	rsync constructon*/
-PHP_METHOD(Rsync, __construct)
-{
-	int block_len = RS_DEFAULT_BLOCK_LEN;
-        int strong_len = RS_DEFAULT_STRONG_LEN;
-	zval *object = getThis();
-	struct rsync_object *intern = (struct rsync_object *) zend_object_store_get_object(object TSRMLS_CC);
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|ll",
-	    &block_len, &strong_len) == FAILURE) {
-		zend_throw_exception_ex(zend_exception_get_default(TSRMLS_C),
-			0 TSRMLS_CC, "Invalid parameters");
-		RETURN_FALSE;
-	}
-
-	intern->block_len;
-	intern->strong_len;
-
-}
-
-/* }}} */
-
-/* {{{ proto boolean Rsync::patchFile(string|stream $oldFile, string|stream $newFile)
-	patch a single file */
-PHP_METHOD(Rsync, patchFile)
-{
-}
-/* }}} */
 
 /* {{{ proto int rsync_generate_signature(string file, string sigfile [, int block_len][, int strong_len ])
    Generate a signatur file from the given file */
