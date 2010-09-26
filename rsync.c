@@ -31,18 +31,6 @@
 
 ZEND_DECLARE_MODULE_GLOBALS(rsync)
 
-#define RSYNC_GETOBJ() \
-	zval *this = getThis(); \
-	rsync_object *intern; \
-	zval *res; \
-	if(this){ \
-		intern  =   (rsync_object*) zend_object_store_get_object(getThis() TSRMLS_CC); \
-		if(!intern){ \
-			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid or unitialized rsync object"); \
-			RETURN_FALSE; \
-		} \
-	}
-
 /* True global resources - no need for thread safety here */
 static int le_rsync;
 
@@ -58,44 +46,6 @@ const zend_function_entry rsync_functions[] = {
 };
 /* }}} */
 
-/**
- * Class definitions
- */
-zend_class_entry *Rsync_ce;
-
-const zend_function_entry Rsync_methods[] = {
-		PHP_ME(Rsync, __construct, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-		PHP_ME(Rsync, patchFile, NULL, ZEND_ACC_FINAL | ZEND_ACC_PUBLIC)
-		{NULL, NULL, NULL}
-};
-
-/**
- * Cleanup function for the object storage
- */
-static void php_rsync_free_storage(struct rsync_object *intern TSRMLS_DC)
-{
-	zend_object_std_dtor(&intern->zo TSRMLS_CC);
-	efree(intern);
-}
-
-/**
- * Object init function
- */
-static zend_object_value php_rsync_new(zend_class_entry *ce TSRMLS_DC)
-{
-	zend_object_value retval;
-	struct rsync_object *intern;
-	zval *tmp;
-
-	intern = ecalloc(1, sizeof(intern));
-	intern->block_len = RS_DEFAULT_BLOCK_LEN;
-        intern->strong_len = RS_DEFAULT_STRONG_LEN;
-	zend_object_std_init(&intern->zo, ce TSRMLS_CC);
-        retval.handle = zend_objects_store_put(intern, NULL, (zend_objects_free_object_storage_t)php_rsync_free_storage, NULL TSRMLS_CC);
-        retval.handlers = zend_get_std_object_handlers();
-
-        return retval;
-}
 /* {{{ersync_module_entry
  */
 zend_module_entry rsync_module_entry = {
@@ -182,34 +132,28 @@ PHP_MINIT_FUNCTION(rsync)
 {
 	ZEND_INIT_MODULE_GLOBALS(rsync, php_rsync_globals_ctor, php_rsync_globals_dtor);
 
-	zend_class_entry ce;
-
-	INIT_CLASS_ENTRY(ce, RSYNC_CLASS_NAME, Rsync_methods);
-	Rsync_ce = zend_register_internal_class(&ce TSRMLS_CC);
-	Rsync_ca->create_object = php_rsync_new;
-
-	REGISTER_LONG_CONSTANT("RSYNC_DONE", 0, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_BLOCKED", 1, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_RUNNING", 2, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_TEST_SKIPPED", 77, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_IO_ERROR", 100, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_SYNTAX_ERROR", 101, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_MEM_ERROR", 102, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_INPUT_ENDED", 103, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_DONE", RS_DONE, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_BLOCKED", RS_BLOCKED, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_RUNNING", RS_RUNNING, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_TEST_SKIPPED", RS_TEST_SKIPPED, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_IO_ERROR", RS_IO_ERROR, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_SYNTAX_ERROR", RS_SYNTAX_ERROR, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_MEM_ERROR", RS_MEM_ERROR, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_INPUT_ENDED", RS_INPUT_ENDED, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RSYNC_BAD_MAGIC", 104, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_UNIMPLEMENTED", 105, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_CORRUPT", 106, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_INTERNAL_ERROR", 107, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_PARAM_ERROR", 108, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_UNIMPLEMENTED", RS_UNIMPLEMENTED, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_CORRUPT", RS_CORRUPT, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_INTERNAL_ERROR", RS_INTERNAL_ERROR, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_PARAM_ERROR", RS_PARAM_ERROR, CONST_CS | CONST_PERSISTENT);
 
-	REGISTER_LONG_CONSTANT("RSYNC_LOG_EMERG", 0, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_LOG_ALERT", 1, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_LOG_CRIT", 2, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_LOG_ERR", 3, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_LOG_WARNING", 4, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_LOG_NOTICE", 5, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_LOG_INFO", 6, CONST_CS | CONST_PERSISTENT);
-	REGISTER_LONG_CONSTANT("RSYNC_LOG_DEBUG", 7, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_LOG_EMERG", RS_LOG_EMERG, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_LOG_ALERT", RS_LOG_ALERT, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_LOG_CRIT", RS_LOG_CRIT, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_LOG_ERR", RS_LOG_ERR, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_LOG_WARNING", RS_LOG_WARNING, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_LOG_NOTICE", RS_LOG_NOTICE, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_LOG_INFO", RS_LOG_INFO, CONST_CS | CONST_PERSISTENT);
+	REGISTER_LONG_CONSTANT("RSYNC_LOG_DEBUG", RS_LOG_DEBUG, CONST_CS | CONST_PERSISTENT);
 
 	REGISTER_LONG_CONSTANT("RSYNC_MD4_LENGTH", RS_MD4_LENGTH, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RSYNC_DEFAULT_STRONG_LEN", RS_DEFAULT_STRONG_LEN, CONST_CS | CONST_PERSISTENT);
@@ -276,7 +220,7 @@ PHP_MINFO_FUNCTION(rsync)
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_signature, 0, 0, 2)
 	ZEND_ARG_INFO(0, file)
-    ZEND_ARG_INFO(0, signaturfile)
+	ZEND_ARG_INFO(0, signaturfile)
 	ZEND_ARG_INFO(0, block_length)
 	ZEND_ARG_INFO(0, strong_length)
 ZEND_END_ARG_INFO()
@@ -293,81 +237,12 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_patch_file, 0, 0, 3)
 	ZEND_ARG_INFO(0, newfile)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_patchFile, 0, 0, 3)
-    ZEND_ARG_INFO(0, originalfilestring)
-    ZEND_ARG_INFO(0, deltafilestring)
-    ZEND_ARG_INFO(0, newfile)
-ZEND_END_ARG_INFO()
-
 /* }}} */
 /* The previous line is meant for vim and emacs, so it can correctly fold and 
    unfold functions in source code. See the corresponding marks just before 
    function definition, where the functions purpose is also documented. Please 
    follow this convention for the convenience of others editing your code.
 */
-
-/* {{{ proto Rsync Rsync::__construct(void)
-	rsync constructon*/
-PHP_METHOD(Rsync, __construct)
-{
-	int block_len = RS_DEFAULT_BLOCK_LEN;
-    int strong_len = RS_DEFAULT_STRONG_LEN;
-	zval *object = getThis();
-	struct rsync_object *intern = (struct rsync_object *) zend_object_store_get_object(object TSRMLS_CC);
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|ll",
-	    &block_len, &strong_len) == FAILURE) {
-		zend_throw_exception_ex(zend_exception_get_default(TSRMLS_C),
-			0 TSRMLS_CC, "Invalid parameters");
-		RETURN_FALSE;
-	}
-
-	intern->block_len;
-	intern->strong_len;
-
-}
-
-/* }}} */
-
-/* {{{ proto boolean Rsync::patchFile(string|stream $oldFile, string|stream $newFile)
-	patch a single file */
-PHP_METHOD(Rsync, patchFile)
-{
-	char *orig_file;
-	int orig_file_len;
-	char *delta_file;
-	int delta_file_len;
-	char *new_file;
-	int new_file_len;
-	php_stream *orig_file_stream, *delta_file_stream, *new_file_stream;
-	FILE *orig_file_h, *delta_file_h, *new_file_h;
-	zval *object = getThis();
-	struct rsync_object *intern = (struct rsync_object *) zend_object_store_get_object(object TSRMLS_CC);
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "sss", &orig_file, &orig_file_len, &delta_file, &delta_file_len,
-					&new_file, &new_file_len) == FAILURE) {
-		zend_throw_exception_ex(zend_exception_get_default(TSRMLS_C),
-				0 TSRMLS_CC, "Invalid parameters");
-		RETURN_FALSE;
-	}
-
-	orig_file_stream = php_stream_memory_open("rb", orig_file, orig_file_len);
-	delta_file_stream = php_stream_memory_open("rb", delta_file, delta_file_len);
-	new_file_stream = php_rsync_file_open(estrdup(new_file), "wb");
-	php_stream_cast(orig_file_stream, PHP_STREAM_AS_STDIO, (void**)&orig_file_h, 1);
-	php_stream_cast(delta_file_stream, PHP_STREAM_AS_STDIO, (void**)&delta_file_h, 1);
-	php_stream_cast(new_file_stream, PHP_STREAM_AS_STDIO, (void**)&new_file_h, 1);
-
-	intern->ret = rs_patch_file(orig_file_h, delta_file_h, new_file_h, &intern->stats);
-
-	php_stream_close(basisfile_stream);
-	php_stream_close(newfile_stream);
-	php_stream_close(deltafile_stream);
-
-	RETURN_LONG(ret);
-
-}
-/* }}} */
 
 /* {{{ proto int rsync_generate_signature(string file, string sigfile [, int block_len][, int strong_len ])
    Generate a signatur file from the given file */
