@@ -177,7 +177,7 @@ PHP_MSHUTDOWN_FUNCTION(rsync)
 #ifdef ZTS
 	ts_free_id(rsync_globals_id);
 #else
-	rsync_globals_dtor(&rsync_globals TSRMLS_CC);
+	php_rsync_globals_dtor(&rsync_globals TSRMLS_CC);
 #endif
 
 	return SUCCESS;
@@ -208,7 +208,7 @@ PHP_MINFO_FUNCTION(rsync)
 {
 	php_info_print_table_start();
 	php_info_print_table_header(2, "rsync support", "enabled");
-	php_info_print_table_row(2, "Version", "$ID: $");
+	php_info_print_table_row(2, "Version", "0.1");
 	php_info_print_table_end();
 
 
@@ -264,8 +264,8 @@ PHP_FUNCTION(rsync_generate_signature)
 			&sigfile_len, &block_len, &strong_len) == FAILURE)
 		return;
 
-	infile_stream = php_rsync_file_open(estrdup(file), "rb");
-	sigfile_stream = php_rsync_file_open(estrdup(sigfile), "wb");
+	infile_stream = php_rsync_file_open(file, "rb");
+	sigfile_stream = php_rsync_file_open(sigfile, "wb");
 
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, 1);
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
@@ -299,7 +299,7 @@ PHP_FUNCTION(rsync_generate_delta)
 	if (zend_parse_parameters(argc TSRMLS_CC, "sss", &sigfile, &sigfile_len, &file, &file_len, &deltafile, &deltafile_len) == FAILURE)
 		return;
 
-	sigfile_stream = php_rsync_file_open(estrdup(sigfile), "rb");
+	sigfile_stream = php_rsync_file_open(sigfile, "rb");
 
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
@@ -315,8 +315,8 @@ PHP_FUNCTION(rsync_generate_delta)
 		php_stream_close(sigfile_stream);
 	}
 
-	infile_stream = php_rsync_file_open(estrdup(file), "rb");
-	deltafile_stream = php_rsync_file_open(estrdup(deltafile), "wb");
+	infile_stream = php_rsync_file_open(file, "rb");
+	deltafile_stream = php_rsync_file_open(deltafile, "wb");
 
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, 1);
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta, 1);
@@ -350,9 +350,9 @@ PHP_FUNCTION(rsync_patch_file)
 	if (zend_parse_parameters(argc TSRMLS_CC, "sss", &file, &file_len, &deltafile, &deltafile_len, &newfile, &newfile_len) == FAILURE)
 		return;
 
-	basisfile_stream = php_rsync_file_open(estrdup(file), "rb");
-	deltafile_stream = php_rsync_file_open(estrdup(deltafile), "rb");
-	newfile_stream = php_rsync_file_open(estrdup(newfile), "wb");
+	basisfile_stream = php_rsync_file_open(file, "rb");
+	deltafile_stream = php_rsync_file_open(deltafile, "rb");
+	newfile_stream = php_rsync_file_open(newfile, "wb");
 
 	php_stream_cast(basisfile_stream, PHP_STREAM_AS_STDIO, (void**)&basis_file, 1);
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta_file, 1);
