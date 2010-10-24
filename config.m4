@@ -65,6 +65,12 @@ if test "$PHP_RSYNC" != "no"; then
     else
       AC_MSG_CHECKING([for rsync library to use])
       AC_MSG_RESULT([bundled]) 
+
+      dnl doing the bundled librsync config 
+      cd librsync
+      ./configure
+      cd ..
+
       librsync_sources="librsync/prototab.c librsync/base64.c librsync/buf.c \
       librsync/checksum.c librsync/command.c librsync/delta.c librsync/emit.c \
       librsync/fileutil.c librsync/hex.c librsync/job.c librsync/mdfour.c \
