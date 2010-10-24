@@ -13,7 +13,7 @@ if ($resultMD5 == $targetMD5 && $ret == RSYNC_DONE) {
 } else {
 	echo "FAILED with Return $ret and MD5 $resultMD5\n";
 }	
-`rm tests/002signatur.sig`
+unlink('tests/002signatur.sig');
 ?>
 --EXPECT--
 SUCCESS

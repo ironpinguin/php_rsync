@@ -15,7 +15,7 @@ if ($resultMD5 == $targetMD5 && $ret == RSYNC_DONE) {
 } else {
 	echo "FAILED with Return $ret and MD5 $resultMD5\n";
 }	
-`rm tests/004test2.png`
+unlink('tests/004test2.png');
 ?>
 --EXPECT--
 SUCCESS
