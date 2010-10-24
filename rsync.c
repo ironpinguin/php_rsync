@@ -112,8 +112,10 @@ php_rsync_file_open(char *filename, char *mode, int input_type, int length)
 	if (input_type == 0) {
 		stream = php_stream_open_wrapper(filename, mode, options, NULL);
 	} else {
-		stream = php_stream_memory_open(mode, filename, length);
+		int mod = is_write ? TEMP_STREAM_DEFAULT : TEMP_STREAM_READONLY;
+		stream = php_stream_memory_open(mod, filename, length);
 	}
+
 	if (!stream) {
 		php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
 				"Error opening \"%s\" for %s: %s", filename,
@@ -267,7 +269,6 @@ PHP_FUNCTION(rsync_generate_signature)
 	int sigfile_len;
 	int block_len = RS_DEFAULT_BLOCK_LEN;
 	int strong_len = RS_DEFAULT_STRONG_LEN;
-	int result;
 	FILE *infile, *signaturfile;
 	input_type inputtype = 0;
 	rs_stats_t stats;
@@ -280,8 +281,7 @@ PHP_FUNCTION(rsync_generate_signature)
 
 	infile_stream = php_rsync_file_open(file, "rb", inputtype, file_len);
 	sigfile_stream = php_rsync_file_open(sigfile, "wb", 0, sigfile_len);
-        result = php_stream_can_cast(infile_stream, PHP_STREAM_AS_STDIO);
-	php_printf("Can Cast:: %i\n", result);
+
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, REPORT_ERRORS);
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
