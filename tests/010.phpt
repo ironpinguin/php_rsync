@@ -7,9 +7,9 @@ Test function rsync_patch_file with stream as input and output.
 --FILE--
 <?php 
 $targetMD5 = 'e869400efb68a96bafc33bda9a940111';
-$file1 = fopen('tests/010test.png');
-$patch = fopen('tests/010test.patch');
-$file2 = fopen('tests/010test2.png');
+$file1 = fopen('tests/010test.png', 'rb');
+$patch = fopen('tests/010test.patch', 'rb');
+$file2 = fopen('tests/010test2.png', 'wb');
 $ret = rsync_patch_file($file1, $patch, $file2);
 fclose($file1);
 fclose($file2);

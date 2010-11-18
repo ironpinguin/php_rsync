@@ -9,7 +9,7 @@ Test function rsync_patch_file with binary string as input.
 $targetMD5 = 'e869400efb68a96bafc33bda9a940111';
 $file = file_get_contents('tests/007test.png');
 $patch = file_get_contents('tests/007test.patch');
-$ret = rsync_patch_file($file, $patch, 'tests/007test2.png');
+$ret = rsync_patch_file($file, $patch, 'tests/007test2.png', 1);
 $resultMD5 = md5_file('tests/007test2.png');
 
 if ($resultMD5 == $targetMD5 && $ret == RSYNC_DONE) {

@@ -5,9 +5,9 @@ Test function rsync_generate_delta with stream as input and output.
 --FILE--
 <?php 
 $targetMD5 = 'b6efe00f2049d221626e63c2a2534361';
-$sig = fopen('tests/009signatur.sig');
-$file = fopen('tests/009test.png');
-$patch = fopen('tests/009test.patch');
+$sig = fopen('tests/009signatur.sig', 'rb');
+$file = fopen('tests/009test.png', 'rb');
+$patch = fopen('tests/009test.patch', 'wb');
 $ret = rsync_generate_delta($sig, $file, $patch);
 fclose($sig);
 fclose($file);
