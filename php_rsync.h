@@ -21,6 +21,9 @@
 #ifndef PHP_RSYNC_H
 #define PHP_RSYNC_H
 
+#define PHP_RSYNC_EXTNAME "rsync"
+#define PHP_RSYNC_EXTVER "0.1"
+
 extern zend_module_entry rsync_module_entry;
 #define phpext_rsync_ptr &rsync_module_entry
 
@@ -38,6 +41,7 @@ extern zend_module_entry rsync_module_entry;
 
 #define RSYNC_HAVE_PHP_53 ZEND_MODULE_API_NO >= 20071006
 
+
 PHP_MINIT_FUNCTION(rsync);
 PHP_MSHUTDOWN_FUNCTION(rsync);
 PHP_RINIT_FUNCTION(rsync);
@@ -50,6 +54,8 @@ PHP_FUNCTION(rsync_patch_file);
 
 ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	char *tmp_dir;
+	long block_length;
+	long strong_length;
 ZEND_END_MODULE_GLOBALS(rsync)
 
 #ifdef ZTS

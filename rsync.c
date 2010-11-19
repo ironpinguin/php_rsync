@@ -77,23 +77,20 @@ ZEND_GET_MODULE(rsync)
 
 /* {{{ PHP_INI
  */
-/* Remove comments and fill if you need to have entries in php.ini
+// TODO howto map a integer define to string?
 PHP_INI_BEGIN()
-    STD_PHP_INI_ENTRY("rsync.global_value",      "42", PHP_INI_ALL, OnUpdateLong, global_value, zend_rsync_globals, rsync_globals)
-    STD_PHP_INI_ENTRY("rsync.global_string", "foobar", PHP_INI_ALL, OnUpdateString, global_string, zend_rsync_globals, rsync_globals)
+    STD_PHP_INI_ENTRY("rsync.block_length",  "2048", PHP_INI_ALL, OnUpdateLong, block_length, zend_rsync_globals, rsync_globals)
+    STD_PHP_INI_ENTRY("rsync.strong_length", "8", PHP_INI_ALL, OnUpdateLong, strong_length, zend_rsync_globals, rsync_globals)
 PHP_INI_END()
-*/
 /* }}} */
 
 /* {{{ php_rsync_init_globals
  */
-/* Uncomment this function if you have INI entries
 static void php_rsync_init_globals(zend_rsync_globals *rsync_globals)
 {
-	rsync_globals->global_value = 0;
-	rsync_globals->global_string = NULL;
+	rsync_globals->block_length = RS_DEFAULT_BLOCK_LEN;
+	rsync_globals->strong_length = RS_DEFAULT_STRONG_LEN;
 }
-*/
 /* }}} */
 
 
@@ -101,7 +98,7 @@ static void php_rsync_init_globals(zend_rsync_globals *rsync_globals)
  * TODO parse dsn to set correct wrapper options
  */
 php_stream *
-php_rsync_file_open(zval **file, char *mode, int input_type, char *name)
+php_rsync_file_open(zval **file, char *mode, char *name)
 {
 	zval 	*return_value;
 	php_stream 	*stream;
@@ -121,16 +118,7 @@ php_rsync_file_open(zval **file, char *mode, int input_type, char *name)
 		strlen = Z_STRLEN_PP(file);
 		is_write = mode[0] == 'w';
 
-		if (input_type == 0) {
-			stream = php_stream_open_wrapper(string, mode, options, NULL);
-		} else {
-			if (strlen > PHP_STREAM_MAX_MEM) {
-				php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
-						"Error opening string \"%s\" is longer than max memory stream length!", name);
-			}
-			int mod = is_write ? TEMP_STREAM_DEFAULT : TEMP_STREAM_READONLY;
-			stream = php_stream_memory_open(mod, string, strlen);
-		}
+		stream = php_stream_open_wrapper(string, mode, options, NULL);
 
 		if (!stream) {
 			php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
@@ -189,9 +177,7 @@ PHP_MINIT_FUNCTION(rsync)
 	REGISTER_LONG_CONSTANT("RSYNC_DEFAULT_STRONG_LEN", RS_DEFAULT_STRONG_LEN, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RSYNC_DEFAULT_BLOCK_LEN", RS_DEFAULT_BLOCK_LEN, CONST_CS | CONST_PERSISTENT);
 
-	/* If you have INI entries, uncomment these lines 
 	REGISTER_INI_ENTRIES();
-	*/
 	return SUCCESS;
 }
 /* }}} */
@@ -200,9 +186,7 @@ PHP_MINIT_FUNCTION(rsync)
  */
 PHP_MSHUTDOWN_FUNCTION(rsync)
 {
-	/* uncomment this line if you have INI entries
 	UNREGISTER_INI_ENTRIES();
-	*/
 
 #ifdef ZTS
 	ts_free_id(rsync_globals_id);
@@ -238,36 +222,29 @@ PHP_MINFO_FUNCTION(rsync)
 {
 	php_info_print_table_start();
 	php_info_print_table_header(2, "rsync support", "enabled");
-	php_info_print_table_row(2, "Version", "0.1");
+	php_info_print_table_row(2, "Version", PHP_RSYNC_EXTVER);
+	php_info_print_table_row(2, "Librsync Version", rs_librsync_version);
 	php_info_print_table_end();
 
-
-	/* Remove comments if you have entries in php.ini
 	DISPLAY_INI_ENTRIES();
-	*/
 }
 /* }}} */
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_signature, 0, 0, 2)
 	ZEND_ARG_INFO(0, file)
 	ZEND_ARG_INFO(0, signaturfile)
-	ZEND_ARG_INFO(0, input_type)
-	ZEND_ARG_INFO(0, block_length)
-	ZEND_ARG_INFO(0, strong_length)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_delta, 0, 0, 3)
 	ZEND_ARG_INFO(0, signaturfile)
 	ZEND_ARG_INFO(0, file)
 	ZEND_ARG_INFO(0, deltafile)
-	ZEND_ARG_INFO(0, input_type)
 ZEND_END_ARG_INFO()
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_patch_file, 0, 0, 3)
 	ZEND_ARG_INFO(0, file)
 	ZEND_ARG_INFO(0, deltafile)
 	ZEND_ARG_INFO(0, newfile)
-	ZEND_ARG_INFO(0, input_type)
 ZEND_END_ARG_INFO()
 
 /* }}} */
@@ -288,25 +265,22 @@ PHP_FUNCTION(rsync_generate_signature)
 	int argc = ZEND_NUM_ARGS();
 	int file_len;
 	int sigfile_len;
-	int block_len = RS_DEFAULT_BLOCK_LEN;
-	int strong_len = RS_DEFAULT_STRONG_LEN;
 	FILE *infile, *signaturfile;
 	input_type inputtype = 0;
 	rs_stats_t stats;
 	rs_result ret;
 	php_stream *infile_stream, *sigfile_stream;
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "ZZ|lll", &file, &sigfile,
-			&inputtype, &block_len, &strong_len) == FAILURE)
+	if (zend_parse_parameters(argc TSRMLS_CC, "ZZ", &file, &sigfile) == FAILURE)
 		return;
 	
-	infile_stream = php_rsync_file_open(file, "rb", inputtype, file1);
-	sigfile_stream = php_rsync_file_open(sigfile, "wb", 0, file2);
+	infile_stream = php_rsync_file_open(file, "rb", file1);
+	sigfile_stream = php_rsync_file_open(sigfile, "wb", file2);
 
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, REPORT_ERRORS);
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
-	ret = rs_sig_file(infile, signaturfile, block_len, strong_len, &stats);
+	ret = rs_sig_file(infile, signaturfile, rsync_globals.block_length, rsync_globals.strong_length, &stats);
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
@@ -336,10 +310,10 @@ PHP_FUNCTION(rsync_generate_delta)
     rs_stats_t      stats1, stats2;
     php_stream *infile_stream, *sigfile_stream, *deltafile_stream;
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ|l", &sigfile, &file, &deltafile, &deltafile_len, &inputtype) == FAILURE)
+	if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &sigfile, &file, &deltafile, &deltafile_len) == FAILURE)
 		return;
 
-	sigfile_stream = php_rsync_file_open(sigfile, "rb", inputtype, file1);
+	sigfile_stream = php_rsync_file_open(sigfile, "rb", file1);
 
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
@@ -355,8 +329,8 @@ PHP_FUNCTION(rsync_generate_delta)
 		php_stream_close(sigfile_stream);
 	}
 
-	infile_stream = php_rsync_file_open(file, "rb", inputtype, file2);
-	deltafile_stream = php_rsync_file_open(deltafile, "wb", 0, file3);
+	infile_stream = php_rsync_file_open(file, "rb", file2);
+	deltafile_stream = php_rsync_file_open(deltafile, "wb", file3);
 
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, 1);
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta, 1);
@@ -391,12 +365,12 @@ PHP_FUNCTION(rsync_patch_file)
     rs_result   ret;
     php_stream *basisfile_stream, *newfile_stream, *deltafile_stream;
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ|l", &file, &deltafile, &newfile, &inputtype) == FAILURE)
+	if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &file, &deltafile, &newfile) == FAILURE)
 		return;
 
-	basisfile_stream = php_rsync_file_open(file, "rb", inputtype, file1);
-	deltafile_stream = php_rsync_file_open(deltafile, "rb", inputtype, file2);
-	newfile_stream = php_rsync_file_open(newfile, "wb", 0, file3);
+	basisfile_stream = php_rsync_file_open(file, "rb", file1);
+	deltafile_stream = php_rsync_file_open(deltafile, "rb", file2);
+	newfile_stream = php_rsync_file_open(newfile, "wb", file3);
 
 	php_stream_cast(basisfile_stream, PHP_STREAM_AS_STDIO, (void**)&basis_file, 1);
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta_file, 1);
