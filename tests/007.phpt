@@ -1,5 +1,5 @@
 --TEST--
-Test function rsync_patch_file with binary string as input.
+Test function rsync_patch_file with stream as input and output.
 --SKIPIF--
 <?php if (!extension_loaded("rsync") || 
           !file_exists("tests/007test.png") || 
@@ -7,9 +7,13 @@ Test function rsync_patch_file with binary string as input.
 --FILE--
 <?php 
 $targetMD5 = 'e869400efb68a96bafc33bda9a940111';
-$file = file_get_contents('tests/007test.png');
-$patch = file_get_contents('tests/007test.patch');
-$ret = rsync_patch_file($file, $patch, 'tests/007test2.png', 1);
+$file1 = fopen('tests/007test.png', 'rb');
+$patch = fopen('tests/007test.patch', 'rb');
+$file2 = fopen('tests/007test2.png', 'wb');
+$ret = rsync_patch_file($file1, $patch, $file2);
+fclose($file1);
+fclose($file2);
+fclose($patch);
 $resultMD5 = md5_file('tests/007test2.png');
 
 if ($resultMD5 == $targetMD5 && $ret == RSYNC_DONE) {
