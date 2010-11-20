@@ -28,7 +28,7 @@ if test "$PHP_RSYNC" != "no"; then
       if test -r $PHP_RSYNC/$SEARCH_FOR; then # path given as parameter
         RSYNC_DIR=$PHP_RSYNC
       else # search default path list
-        AC_MSG_CHECKING([for rsync files in default path])
+        AC_MSG_CHECKING([for librsync files in default path])
         for i in $SEARCH_PATH ; do
           if test -r $i/$SEARCH_FOR; then
             RSYNC_DIR=$i
@@ -39,7 +39,7 @@ if test "$PHP_RSYNC" != "no"; then
       
       if test -z "$RSYNC_DIR"; then
         AC_MSG_RESULT([not found])
-        AC_MSG_ERROR([Please reinstall the rsync distribution])
+        AC_MSG_ERROR([Please reinstall the librsync distribution])
       fi
     
       dnl # --with-rsync -> add include path
@@ -54,7 +54,7 @@ if test "$PHP_RSYNC" != "no"; then
         PHP_ADD_LIBRARY_WITH_PATH($LIBNAME, $RSYNC_DIR/lib, RSYNC_SHARED_LIBADD)
         AC_DEFINE(HAVE_RSYNCLIB,1,[ ])
       ],[
-        AC_MSG_ERROR([wrong rsync lib version or lib not found])
+        AC_MSG_ERROR([wrong librsync version or lib not found])
       ],[
         -L$RSYNC_DIR/lib -lm
       ])
@@ -66,6 +66,10 @@ if test "$PHP_RSYNC" != "no"; then
       AC_MSG_CHECKING([for rsync library to use])
       AC_MSG_RESULT([bundled]) 
 
+      if test ! -d librsync; then
+        AC_MSG_RESULT([not found])
+        AC_MSG_ERROR([Please install librsync or put source unter librsync directory here])
+      fi
       dnl doing the bundled librsync config 
       cd librsync
       ./configure
