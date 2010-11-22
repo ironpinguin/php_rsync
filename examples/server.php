@@ -39,73 +39,105 @@ class rsyncServer
      */
     public $structure = array();
     
-    public $remoteStructure = array();
+    public $result = array();
 
     /**
      * Constructor of the Client.
      * 
-     * @param string $targetUrl Url of the Server
      * @param string $localpath Local directory to sync
-     * @param string $basepath  Remote base directory to sync if null the 
-     *                          default will be used at the server
      * @param string $direction Direction to sync 
-     *                          f = client to server
-     *                          b = server to client
+     *                          f = server to client
+     *                          b = client to server
      */
-    public function __construct($remoteStructure, $localpath, $direction, 
-            $request) 
+    public function __construct($localpath, $direction)
     {
         $this->localpath = $localpath;
-        $this->remoteStructure = $remoteStructure;
+        $this->getLocalStructur($localpath);
         $this->direction = $direction;
     }
 
-    public function sync()
+    /**
+     *
+     * @param type $remoteStructure
+     * @param type $signatures 
+     */
+    public function step1($remoteStructure, $signatures)
     {
-        $postdata = array();
-        $this->getLocalStructur($this->localpath);
-        $curl = curl_init($this->targetUrl);
-        curl_setopt($curl, CURLOPT_POST, true);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        
-        $postdata['filelist'] = json_encode($this->structure);
-        $postdata['direction'] = $this->direction;
-        if (!empty($this->basepath)) $postdata['basepath'] = $this->basepath;
-        
-        if ($this->direction == 'f') {
-            $signaturFiles = array();
-            foreach($this->structure as $filedata) {
-                if ($filedata['type'] != 'dir') {
-                    $fin = fopen($this->localpath.'/'.$filedata['name'], 'rb');
-                    $tmpname = tempnam(sys_get_temp_dir(), 'sign');
-                    $fsig = fopen($tmpname, 'wb');
-                    $ret = rsync_generate_signature($fin, $fsig);
-                    fclose($fin);
-                    fclose($fsig);
-                    if ($ret != RSYNC_DONE) {
-                        throw new Exception("Signatur generating Failed with $ret !", $ret);
-                    }
-                    $signaturFiles[$filedata['name']] = file_get_contents($tmpname);
-                    unlink($tmpname);
+        foreach ($remoteStructure as $name => $data) {
+            if (array_key_exists($name, $this->structure)) {
+                $patch = $this->createPatch($name, $signatures[$name]);
+                if ($patch === false) return json_encode("ERROR");
+                $this->result['changes'][$name] = $this->structure[$name];
+                $this->result['changes'][$name]['patch'] = $patch;
+                $this->result['changes'][$name]['changetype'] = 'patch';
+            }
+        }
+        foreach($this->structure as $name => $data) {
+            if (!array_key_exists($name, $remoteStructure)) {
+                $this->result['changes'][$name] = $data;
+                if ($data['type'] == 'dir') {
+                    $this->result['changes'][$name]['changetype'] = 'newDir';
+                } else {
+                    $this->result['changes'][$name]['changetype'] = 'newFile';
+                    $this->result['changes'][$name]['content'] = 
+                            file_get_contents($this->localpath.
+                                    DIRECTORY_SEPARATOR.$name);
                 }
             }
-            $postdata['signatures'] = json_encode($signaturFiles);
         }
-        $response = curl_errno($curl);
-        var_dump($response);
-        exit;
+        return json_encode($this->result);
     }
     
+    /**
+     *
+     * @param type $name
+     * @param type $signature
+     * @return type 
+     */
+    public function createPatch($name, $signature) {
+        $patchfile = tempnam(sys_get_temp_dir(), 'patch');
+        $sighandle = fopen('data://text/plain;base64,'.
+                base64_encode($signature), 'rb');
+        $ret = rsync_generate_delta($sighandle, 
+                $this->localpath.DIRECTORY_SEPARATOR.$name, $patchfile);
+        fclose($sighandle);
+        if ($ret != RSYNC_DONE) {
+            return false;
+        }
+        $patch = file_get_contents($patchfile);
+        unlink($patchfile);
+        return $patch;
+    }
+
+
+    /**
+     * Get the Local Directory Structure to check against the remote.
+     * This Method is working recursive to step deeper in the directory.
+     *
+     * @param string $dir    Aktual working directory
+     * @param string $prefix Prefix to make relative path to the initial 
+     *                       directory
+     */
     public function getLocalStructur($dir, $prefix = '')
     {
         $actualDirContent = scandir($dir);
         foreach( $actualDirContent as $dentry) {
             if ($dentry != '.' || $dentry != '..') {
-                $type = filetype($dir.$dentry);
-                $this->structure[] = array('name' => $prefix.'/'.$dentry,
-                                           'type' => $type);
+                $type = filetype($dir."/".$dentry);
+                if ($type != 'dir' && $type != 'file') continue;
+                $stats = stat($dir."/".$dentry);
+                if ($stats === FALSE) {
+                    throw new Exception("Filestats for ".$dir."/".$dentry.
+                            " ist not readable!", 9);
+                }
+                $this->structure[$prefix.'/'.$dentry] = array(
+                    'name' => $prefix.'/'.$dentry,
+                    'type' => $type, 'rights' => $stats['mode'],
+                    'mtime' => $stats['mtime'], 'uid' => $stats['uid'],
+                    'gid' => $stats['gid']);
                 if ($type == 'dir') {
-                    $this->getLocalStructur($dir.$dentry, $prefix.'/'.$dentry);
+                    $this->getLocalStructur($dir.'/'.$dentry, 
+                            $prefix.'/'.$dentry);
                 }
             }
         }
@@ -136,37 +168,41 @@ if ($_REQUEST['direction'] != 'f' && $_REQUEST['direction'] != 'b') {
 }
 
 $direction = $_REQUEST['direction'];
-$targetUrl = '';
-$base = null;
-$local = '';
-$direction = 'f';
 
-if (count($args) < 8) {
-    rsyncClient::usage();
-    exit(1);
+if (!isset($_REQUEST['filelist']) && empty($_REQUEST['filelist'])) {
+    echo json_encode("ERROR");
+    exit;
 }
 
-for ($i=1; $i > count($args); $i=$i+2) {
-    switch ($args[$i]) {
-        case '-t':
-            $targetUrl = $args[$i+1];
-            break;
-        case '-b':
-            $base = $args[$i+1];
-            break;
-        case '-s':
-            $local = $args[$i+1];
-            break;
-        case '-d':
-            $direction = $args[$i+1];
-            break;
-        case '-h':
-            rsyncClient::usage();
-            exit;
-            break;
-        default:
-            echo "Unknow option ".$args[$i]."\n";
-            usage();
-            break;
+$signatures = null;
+$remoteStructure = json_decode($_REQUEST['filelist']);
+if ($direction == 'f') {
+    if (!isset($_REQUEST['signatures'])) {
+        echo json_encode("ERROR");
+        exit;
     }
+    $signatures = json_decode($_REQUEST['signatures']);
+} else {
+    // Not implemented jet.
+    echo json_encode("ERROR");
+    exit;
+}
+
+try {
+    $server = new rsyncServer($localpath, $direction);
+} catch (Exception $e) {
+    echo json_encode("ERROR");
+    exit;
+}
+switch ($_REQUEST['step']) {
+    case '1':
+        echo $server->step1($remoteStructure, $signatures);
+        break;
+    case '2':
+        // Not impelemented jet.
+        echo json_encode("ERROR");
+        break;
+    default:
+        echo json_encode("ERROR");
+        break;
 }

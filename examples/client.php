@@ -31,8 +31,9 @@ class rsyncClient
     public $localpath;
     
     /**
-     * Sync direction f for syncing changes from Client to Server and 
-     * b for syncing changes from Server to Client.
+     * Sync direction 
+     *  f  for syncing changes from Server to Client.
+     *  b  for syncing changes from Client to Server.
      * 
      * @var string
      */
@@ -63,72 +64,175 @@ class rsyncClient
         if (!$this->isValidURL($targetUrl)) {
             echo "Given Url '$targetUrl' is not a valid URL\n";
             rsyncClient::usage();
-            throw new exception("Given Url is not a valid URL", 1);
+            throw new Exception("Given Url is not a valid URL", 1);
         }
         $this->targetUrl = $targetUrl;
         if (!is_dir($localpath) || !is_writable($localpath)) {
             echo "Given local Directory '$localpath' is not a directory or/and".
                 " is not writeable\n";
             rsyncClient::usage();
-            throw new exception("Given local Directory '$localpath' is not a".
+            throw new Exception("Given local Directory '$localpath' is not a".
                 "directory or/and is not writeable", 2);
         }
         if ($direction != 'f' && $direction != 'b') {
             echo "No valid Direction given: '$direction'\n";
             rsyncClient::usage();
-            throw new exception("No valid Direction given: '$direction'", 3);
+            throw new Exception("No valid Direction given: '$direction'", 3);
         }
         $this->direction = $direction;
         if ($basepath !== null) $this->basepath = $basepath;
     }
 
+    /**
+     * Start der Sync process.
+     */
     public function sync()
     {
-        $postdata = array();
         $this->getLocalStructur($this->localpath);
+        $this->step1();
+
+    }
+    
+    
+    public function step1()
+    {
         $curl = curl_init($this->targetUrl);
         curl_setopt($curl, CURLOPT_POST, true);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        
-        $postdata['filelist'] = json_encode($this->strukture);
+        $postdata = array();
+        $postdata['filelist'] = json_encode($this->structure);
         $postdata['direction'] = $this->direction;
         $postdata['step'] = 1;
         if (!empty($this->basepath)) $postdata['basepath'] = $this->basepath;
         
         if ($this->direction == 'f') {
             $signaturFiles = array();
-            foreach($this->strukture as $filedata) {
+            foreach($this->structure as $file => $data) {
                 if ($filedata['type'] != 'dir') {
-                    $fin = fopen($this->localpath.'/'.$filedata['name'], 'rb');
+                    $fin = fopen($this->localpath.'/'.$file, 'rb');
                     $tmpname = tempnam(sys_get_temp_dir(), 'sign');
                     $fsig = fopen($tmpname, 'wb');
                     $ret = rsync_generate_signature($fin, $fsig);
                     fclose($fin);
                     fclose($fsig);
                     if ($ret != RSYNC_DONE) {
-                        throw new Exception("Signatur generating Failed with $ret !", $ret);
+                        throw new Exception("Signatur generating Failed with ".
+                                $ret."!", $ret);
                     }
-                    $signaturFiles[$filedata['name']] = file_get_contents($tmpname);
+                    $signaturFiles[$file] = file_get_contents($tmpname);
                     unlink($tmpname);
                 }
             }
             $postdata['signatures'] = json_encode($signaturFiles);
         }
-        $response = curl_errno($curl);
-        var_dump($response);
-        exit;
+        $requestResponse = curl_exec($curl);
+        if ($requestResponse === FALSE) {
+            throw new Exception("Curl Request Error: ".curl_error($curl), 
+                    curl_errno($curl));
+        }
+        $response = json_decode($requestResponse);
+        if ($response === NULL) {
+            throw new Exception("Response from Server is not understandable", 
+                    10);
+        }
+        if ($response == "ERROR") {
+            throw new Exception("Some Error on Server", 11);
+        }
+        
+        if ($this->direction == 'f') {
+            if (!array_key_exists('changes', $response)) {
+                throw new Exception("Missing the patches in the response".
+                        " from Server", 12);
+            }
+            foreach ($response['changes'] as $changeFile => $changeData) {
+                switch ($changeData['changetype']) {
+                    case 'newDir':
+                        $this->createDirectory($changeFile, $changeData);
+                        break;
+                    case 'patch':
+                        $this->patchFile($changeFile, $changeData);
+                        break;
+                    case 'newFile':
+                        $this->createFile($changeFile, $changeData);
+                        break;
+                    default :
+                        throw new Exception("Unknow ChangeType ".
+                                $changeData['changetype'], 13);
+                        break;
+                }
+            }
+        } else {
+            // @TODO Implement it
+        }
     }
     
+    /**
+     * Create a new Directory
+     *
+     * @param string $filename Directoryname
+     * @param array  $data     createData
+     */
+    public function createDirector($filename, $data)
+    {
+        mkdir($this->localpath.DIRECTORY_SEPARATOR.$filename);
+        chmod($this->localpath.DIRECTORY_SEPARATOR.$filename, $data['mode']);
+    }
+    
+    /**
+     * Create a new File
+     * 
+     * @param string $filename
+     * @param array  $data
+     */
+    public function createFile($filename, $data)
+    {
+        file_put_contents($this->localpath.DIRECTORY_SEPARATOR.$filename, 
+                $data['content']);
+        chmod($this->localpath.DIRECTORY_SEPARATOR.$filename, $data['mode']);
+    }
+    
+    public function patchFile($filename, $data)
+    {
+        $ret = rsync_patch_file($this->localpath.DIRECTORY_SEPARATOR.$filename, 
+                $data['patch'], 
+                $this->localpath.DIRECTORY_SEPARATOR.$filename.'-new');
+        if ($ret != RSYNC_DONE) {
+            throw new Exception("Can not patch file ".$filename.".", $ret);
+        }
+        unlink($this->localpath.DIRECTORY_SEPARATOR.$filename);
+        rename($this->localpath.DIRECTORY_SEPARATOR.$filename.'-new', 
+                $this->localpath.DIRECTORY_SEPARATOR.$filename);
+        chmod($this->localpath.'/'.$filename, $data['mode']);
+    }
+
+    /**
+     * Get the Local Directory Structure to check against the remote.
+     * This Method is working recursive to step deeper in the directory.
+     *
+     * @param string $dir    Aktual working directory
+     * @param string $prefix Prefix to make relative path to the initial 
+     *                       directory
+     */
     public function getLocalStructur($dir, $prefix = '')
     {
         $actualDirContent = scandir($dir);
         foreach( $actualDirContent as $dentry) {
             if ($dentry != '.' || $dentry != '..') {
-                $type = filetype($dir.$dentry);
-                $this->strukture[] = array('name' => $prefix.'/'.$dentry,
-                                           'type' => $type);
+                $type = filetype($dir."/".$dentry);
+                if ($type != 'dir' && $type != 'file') continue;
+                $stats = stat($dir."/".$dentry);
+                if ($stats === FALSE) {
+                    throw new Exception("Filestats for ".$dir."/".$dentry.
+                            " ist not readable!", 9);
+                }
+                $this->structure[$prefix.'/'.$dentry] = array(
+                    'name' => $prefix.'/'.$dentry,
+                    'type' => $type, 'rights' => $stats['mode'],
+                    'mtime' => $stats['mtime'], 'uid' => $stats['uid'],
+                    'gid' => $stats['gid']);
                 if ($type == 'dir') {
-                    $this->getLocalStructur($dir.$dentry, $prefix.'/'.$dentry);
+                    $this->getLocalStructur($dir.'/'.$dentry, 
+                            $prefix.'/'.$dentry);
                 }
             }
         }
@@ -163,8 +267,8 @@ class rsyncClient
             "                 basedirectories to sync.\n".
             "  -s <local>     The local directory to sync\n".
             "  -d <direction> The direction to sync. Default is 'f'.\n".
-            "                   f => from client to server\n".
-            "                   b => from server to client\n";
+            "                   f => from server to client\n".
+            "                   b => from client to server\n";
     }
 
 }
