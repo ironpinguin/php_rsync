@@ -2,17 +2,11 @@
   +----------------------------------------------------------------------+
   | PHP Version 5                                                        |
   +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2008 The PHP Group                                |
+  | Copyright (c) 2010 Michele Catalano                                  |
   +----------------------------------------------------------------------+
-  | This source file is subject to version 3.01 of the PHP license,      |
-  | that is bundled with this package in the file LICENSE, and is        |
-  | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
-  | obtain it through the world-wide-web, please send a note to          |
-  | license@php.net so we can mail you a copy immediately.               |
+  |                                                                      |
   +----------------------------------------------------------------------+
-  | Author:                                                              |
+  | Author: Michele Catalano                                             |
   +----------------------------------------------------------------------+
 */
 
@@ -51,7 +45,7 @@ const zend_function_entry rsync_functions[] = {
 };
 /* }}} */
 
-/* {{{ersync_module_entry
+/* {{{rsync_module_entry
  */
 zend_module_entry rsync_module_entry = {
 #if ZEND_MODULE_API_NO >= 20010901
@@ -61,11 +55,11 @@ zend_module_entry rsync_module_entry = {
 	rsync_functions,
 	PHP_MINIT(rsync),
 	PHP_MSHUTDOWN(rsync),
-	PHP_RINIT(rsync),		/* Replace with NULL if there's nothing to do at request start */
-	PHP_RSHUTDOWN(rsync),	/* Replace with NULL if there's nothing to do at request end */
+	PHP_RINIT(rsync),
+	PHP_RSHUTDOWN(rsync),
 	PHP_MINFO(rsync),
 #if ZEND_MODULE_API_NO >= 20010901
-	"0.1", /* Replace with version number for your extension */
+	"0.1",
 #endif
 	STANDARD_MODULE_PROPERTIES
 };
@@ -95,7 +89,7 @@ static void php_rsync_init_globals(zend_rsync_globals *rsync_globals)
 
 
 /* {{{ php_rsync_file_open
- * TODO parse dsn to set correct wrapper options
+ * 
  */
 php_stream *
 php_rsync_file_open(zval **file, char *mode, char *name)
@@ -134,15 +128,19 @@ php_rsync_file_open(zval **file, char *mode, char *name)
 }
 /* }}} */
 
+/* {{{ php_rsync_globals_ctor
+ */
 void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
 {
 	rsync_globals->tmp_dir = (char*)php_get_temporary_directory();
 }
+/* }}} */
 
+/* {{{ php_rsync_globals_dtor
+ */
 void php_rsync_globals_dtor(zend_rsync_globals  *rsync_globals TSRMLS_DC)
 {
-
-}
+/* }}} */
 
 /* {{{ PHP_MINIT_FUNCTION
  */
@@ -248,11 +246,6 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_patch_file, 0, 0, 3)
 ZEND_END_ARG_INFO()
 
 /* }}} */
-/* The previous line is meant for vim and emacs, so it can correctly fold and 
-   unfold functions in source code. See the corresponding marks just before 
-   function definition, where the functions purpose is also documented. Please 
-   follow this convention for the convenience of others editing your code.
-*/
 
 /* {{{ proto int rsync_generate_signature(string file, string sigfile [, int block_len][, int strong_len ])
    Generate a signatur file from the given file */
