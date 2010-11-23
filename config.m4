@@ -2,24 +2,11 @@ dnl $Id$
 dnl config.m4 for extension rsync
 
 dnl Comments in this file start with the string 'dnl'.
-dnl Remove where necessary. This file will not work
-dnl without editing.
-
-dnl If your extension references something external, use with:
 
 PHP_ARG_WITH(rsync, for rsync support,
-dnl Make sure that the comment is aligned:
 [  --with-rsync             Include rsync support])
 
-dnl Otherwise use enable:
-
-dnl PHP_ARG_ENABLE(rsync, whether to enable rsync support,
-dnl Make sure that the comment is aligned:
-dnl [  --enable-rsync           Enable rsync support])
-
 if test "$PHP_RSYNC" != "no"; then
-  dnl Write more examples of tests here...
-  
   dnl # --with-rsync -> check with-path
   SEARCH_PATH="/usr/local /usr" 
   SEARCH_FOR="include/librsync.h"
