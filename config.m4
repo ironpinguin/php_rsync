@@ -47,31 +47,36 @@ if test "$PHP_RSYNC" != "no"; then
     PHP_NEW_EXTENSION(rsync, $librsync_sources rsync.c, $ext_shared,,-I./librsync)
     
     PHP_ADD_BUILD_DIR($ext_builddir/librsync) 
-dnl  PHP_INSTALL_HEADERS([ext/rsync], [php_rsync.h rsync/]) 
+    dnl  PHP_INSTALL_HEADERS([ext/rsync], [php_rsync.h rsync/]) 
     AC_DEFINE(HAVE_BUNDLED_RSYNC, 1, [ ])
     AC_CHECK_FUNCS([snprintf vsnprintf], [], [])
 
     dnl AC_CHECK_HEADERS([librsync/prototab.h librsync/buf.h librsync/checksum.h librsync/command.h librsync/emit.h librsync/fileutil.h librsync/job.h librsync/mdfour.h librsync/netint.h librsync/protocol.h librsync/librsync.h librsync/librsync-config.h librsync/rollsum.h librsync/search.h librsync/stream.h librsync/sumset.h librsync/trace.h librsync/types.h librsync/util.h librsync/whole.h librsync/snprintf.h], [], [])
+  else
+    dnl set the infos to the externel lib
+
+    dnl # --with-rsync -> check for lib and symbol presence
+    LIBNAME=rsync 
+    LIBSYMBOL=rs_librsync_version 
+  
+    PHP_CHECK_LIBRARY($LIBNAME,$LIBSYMBOL,
+    [
+      PHP_ADD_LIBRARY_WITH_PATH($LIBNAME, $RSYNC_DIR/lib, RSYNC_SHARED_LIBADD)
+      AC_DEFINE(HAVE_RSYNCLIB,1,[ ])
+    ],[
+      AC_MSG_ERROR([wrong librsync version or lib not found])
+    ],[
+      -L$RSYNC_DIR/lib -lm
+    ])
+  
+    PHP_NEW_EXTENSION(rsync, rsync.c, $ext_shared)
+      
   fi
   
   dnl # --with-rsync -> add include path
   PHP_ADD_INCLUDE($RSYNC_DIR/include)
 
-  dnl # --with-rsync -> check for lib and symbol presence
-  LIBNAME=rsync # you may want to change this
-  LIBSYMBOL=rs_librsync_version # you most likely want to change this 
-
-  PHP_CHECK_LIBRARY($LIBNAME,$LIBSYMBOL,
-  [
-    PHP_ADD_LIBRARY_WITH_PATH($LIBNAME, $RSYNC_DIR/lib, RSYNC_SHARED_LIBADD)
-    AC_DEFINE(HAVE_RSYNCLIB,1,[ ])
-  ],[
-    AC_MSG_ERROR([wrong librsync version or lib not found])
-  ],[
-    -L$RSYNC_DIR/lib -lm
-  ])
   dnl
   PHP_SUBST(RSYNC_SHARED_LIBADD)
 
-  PHP_NEW_EXTENSION(rsync, rsync.c, $ext_shared)
 fi
