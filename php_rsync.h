@@ -7,6 +7,7 @@
   | in the accompanying LICENSE file are met.                          |
   +--------------------------------------------------------------------+
   | Copyright (c) 2010 Michele Catalano <michele@catalano.de>          |
+  |                    Anatoliy Belsky <ab@php.net>                    |
   +--------------------------------------------------------------------+ 
 */
 
