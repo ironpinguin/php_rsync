@@ -1,9 +1,29 @@
 <?php
-
+/**
+ * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ATTANTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ * This is a example for using the rsync extension
+ * This example don't work with large directories and big files. 
+ * There get alle changing content in the address space to send them over 
+ * network, so if the data to transmit is to great to fit in the php max 
+ * memory usage this client will be case an PHP error. 
+ * 
+ * Feel free to implement your own protocol using the librsync to generate 
+ * signatur files and patch files.
+ *
+ * This server can only used to get request from client of changes in the 
+ * directory on the server.
+ * There generatt the patches of changed files, deleted files, new files and new 
+ * directory. 
+ */
 if (!extension_loaded("rsync")) {
     echo "You need the rsync php extension loaded to use this!";
     exit;
 }
+
+// Config here the path where be provided to sync with the client.php
+$syncpathes = array("testdir1" => "/testdir1", "testdir2" => "/testdir2");
+// Set the Default path if the client.php don't send a basepath with the request.
+$default = "testdir1";
 
 /**
  * The rsync example Client Class
@@ -57,11 +77,11 @@ class rsyncServer
     }
 
     /**
-     *
+     * 
      * @param type $remoteStructure
      * @param type $signatures 
      */
-    public function step1($remoteStructure, $signatures)
+    public function serverToClientSync($remoteStructure, $signatures)
     {
         foreach ($remoteStructure as $name => $data) {
             if (array_key_exists($name, $this->structure)) {
@@ -70,6 +90,9 @@ class rsyncServer
                 $this->result['changes'][$name] = $this->structure[$name];
                 $this->result['changes'][$name]['patch'] = $patch;
                 $this->result['changes'][$name]['changetype'] = 'patch';
+	    } else {
+                $this->result['changes'][$name] = $this->structure[$name];
+                $this->result['changes'][$name]['changetype'] = 'delete';
             }
         }
         foreach($this->structure as $name => $data) {
@@ -144,14 +167,13 @@ class rsyncServer
     }
 }
 
-$syncpathes = array('/testdir1', '/testdir2');
-$default = 0;
-
+// check if the Request Parameter step is given
 if (!isset($_REQUEST['step'])) {
     echo json_encode("ERROR");
 }
 
-$remoteStructure = json_decode($_REQUEST['filelist']);
+// Check if Basepath parameter is send from the client.
+// If not use the default from configuration (see the begin of this file).
 if (isset($_REQUEST['basepath'])) {
     if (!in_array($_REQUEST['basepath'], $syncpathes)) {
         echo json_encode("ERROR");
@@ -162,6 +184,7 @@ if (isset($_REQUEST['basepath'])) {
     $localpath = $syncpathes[$default];
 }
 
+// Check if the sync direction is given and has the right parameter.
 if ($_REQUEST['direction'] != 'f' && $_REQUEST['direction'] != 'b') {
     echo json_encode("ERROR");
     exit;
@@ -169,13 +192,16 @@ if ($_REQUEST['direction'] != 'f' && $_REQUEST['direction'] != 'b') {
 
 $direction = $_REQUEST['direction'];
 
+
 if (!isset($_REQUEST['filelist']) && empty($_REQUEST['filelist'])) {
     echo json_encode("ERROR");
     exit;
 }
-
-$signatures = null;
+// decode the json encoded filelist parameter
 $remoteStructure = json_decode($_REQUEST['filelist']);
+
+// Get the signatures from client if direction is serverToClient (f)
+$signatures = null;
 if ($direction == 'f') {
     if (!isset($_REQUEST['signatures'])) {
         echo json_encode("ERROR");
@@ -183,26 +209,36 @@ if ($direction == 'f') {
     }
     $signatures = json_decode($_REQUEST['signatures']);
 } else {
-    // Not implemented jet.
+    // @TODO Client to Server sync is not implemented.
     echo json_encode("ERROR");
     exit;
 }
 
+// Initialize the Server Class.
 try {
     $server = new rsyncServer($localpath, $direction);
 } catch (Exception $e) {
     echo json_encode("ERROR");
     exit;
 }
+
+// Switch between the diffrent Steps of Syncing (Server to Client sync has only one step).
 switch ($_REQUEST['step']) {
     case '1':
-        echo $server->step1($remoteStructure, $signatures);
-        break;
+	if ($direction == 'f') {
+            echo $server->serverToClientSync($remoteStructure, $signatures);
+            break;
+        } else {
+            // @TODO Client to Server Sync is not implemented.
+            break;
+	}
+	break;
     case '2':
-        // Not impelemented jet.
+        // @TODO Client to Server sync is not impelemented.
         echo json_encode("ERROR");
         break;
     default:
+        // Unknowed Step given!
         echo json_encode("ERROR");
         break;
 }
