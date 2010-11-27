@@ -1,5 +1,21 @@
 <?php
-
+/**
+ * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ATTANTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+ * This is a example for using the rsync extension
+ * This example don't work with large directories and big files. 
+ * There get alle changing content in the address space to send them over 
+ * network, so if the data to transmit is to great to fit in the php max 
+ * memory usage this client will be case an PHP error. 
+ * 
+ * Feel free to implement your own protocol using the librsync to generate 
+ * signatur files and patch files.
+ *
+ * This client can only used to get changes from server and patch you local 
+ * directory with it.
+ * There get the patches of changed files, deleted files, new files and new 
+ * directory. 
+ * (only the mode will be prevent an no user or group changes will be made)
+ */
 if (!extension_loaded("rsync")) {
     echo "You need the rsync php extension loaded to use this!";
     exit;
@@ -89,42 +105,86 @@ class rsyncClient
     public function sync()
     {
         $this->getLocalStructur($this->localpath);
-        $this->step1();
-
-    }
-    
-    
-    public function step1()
-    {
-        $curl = curl_init($this->targetUrl);
-        curl_setopt($curl, CURLOPT_POST, true);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        $postdata = array();
+	$curl = $this->prepareCurl();
+	$postdata = array();
         $postdata['filelist'] = json_encode($this->structure);
         $postdata['direction'] = $this->direction;
-        $postdata['step'] = 1;
         if (!empty($this->basepath)) $postdata['basepath'] = $this->basepath;
         
         if ($this->direction == 'f') {
-            $signaturFiles = array();
-            foreach($this->structure as $file => $data) {
-                if ($filedata['type'] != 'dir') {
-                    $fin = fopen($this->localpath.'/'.$file, 'rb');
-                    $tmpname = tempnam(sys_get_temp_dir(), 'sign');
-                    $fsig = fopen($tmpname, 'wb');
-                    $ret = rsync_generate_signature($fin, $fsig);
-                    fclose($fin);
-                    fclose($fsig);
-                    if ($ret != RSYNC_DONE) {
-                        throw new Exception("Signatur generating Failed with ".
-                                $ret."!", $ret);
-                    }
-                    $signaturFiles[$file] = file_get_contents($tmpname);
-                    unlink($tmpname);
+            $postdata['step'] = 1;
+            $this->serverToClient($curl, $postdata);
+	} else {
+            // @TODO Implement the sync from client to server.
+	}
+
+    }
+    
+    /**
+     *  Step by sync files from Server to Client
+     *
+     */
+    public function serverToClient($curl, $postdata)
+    {
+        $signaturFiles = array();
+        foreach($this->structure as $file => $data) {
+            if ($filedata['type'] != 'dir') {
+                $fin = fopen($this->localpath.'/'.$file, 'rb');
+                $tmpname = tempnam(sys_get_temp_dir(), 'sign');
+                $fsig = fopen($tmpname, 'wb');
+                $ret = rsync_generate_signature($fin, $fsig);
+                fclose($fin);
+                fclose($fsig);
+                if ($ret != RSYNC_DONE) {
+                    throw new Exception("Signatur generating Failed with ".
+                            $ret."!", $ret);
                 }
+                $signaturFiles[$file] = file_get_contents($tmpname);
+                unlink($tmpname);
             }
-            $postdata['signatures'] = json_encode($signaturFiles);
         }
+	$postdata['signatures'] = json_encode($signaturFiles);
+
+	curl_setopt($curl, CURLOPT_POSTFIELDS, $postdata);
+
+	$response = $this->sendCurlRequest($curl);
+        
+        if (!array_key_exists('changes', $response)) {
+            throw new Exception("Missing the patches in the response".
+                    " from Server", 12);
+	}
+	ksort($response['changes'], SORT_LOCALE_STRING);
+        foreach ($response['changes'] as $changeFile => $changeData) {
+            switch ($changeData['changetype']) {
+                case 'newDir':
+                    $this->createDirectory($changeFile, $changeData);
+                    break;
+                case 'patch':
+                    $this->patchFile($changeFile, $changeData);
+                    break;
+                case 'newFile':
+                    $this->createFile($changeFile, $changeData);
+			break;
+                case 'delete':
+                    unlink($changeFile);
+                    break;
+                default :
+                    throw new Exception("Unknow ChangeType ".
+                            $changeData['changetype'], 13);
+                    break;
+            }
+        }
+    }
+
+    /**
+     * Send the Curl Request to the server and make a simple analyse of the response
+     *
+     * @param resource $curl The curl request resource
+     *
+     * @return array The Response Array
+     */
+    public function sendCurlRequest($curl)
+    {
         $requestResponse = curl_exec($curl);
         if ($requestResponse === FALSE) {
             throw new Exception("Curl Request Error: ".curl_error($curl), 
@@ -137,33 +197,22 @@ class rsyncClient
         }
         if ($response == "ERROR") {
             throw new Exception("Some Error on Server", 11);
-        }
-        
-        if ($this->direction == 'f') {
-            if (!array_key_exists('changes', $response)) {
-                throw new Exception("Missing the patches in the response".
-                        " from Server", 12);
-            }
-            foreach ($response['changes'] as $changeFile => $changeData) {
-                switch ($changeData['changetype']) {
-                    case 'newDir':
-                        $this->createDirectory($changeFile, $changeData);
-                        break;
-                    case 'patch':
-                        $this->patchFile($changeFile, $changeData);
-                        break;
-                    case 'newFile':
-                        $this->createFile($changeFile, $changeData);
-                        break;
-                    default :
-                        throw new Exception("Unknow ChangeType ".
-                                $changeData['changetype'], 13);
-                        break;
-                }
-            }
-        } else {
-            // @TODO Implement it
-        }
+	}
+
+	return $response;
+    }
+
+    /**
+     * Set a curl request object.
+     *
+     * @return resource
+     */
+    public function prepareCurl()
+    {
+        $curl = curl_init($this->targetUrl);
+        curl_setopt($curl, CURLOPT_POST, true);
+        curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
+        return $curl;
     }
     
     /**
@@ -190,7 +239,14 @@ class rsyncClient
                 $data['content']);
         chmod($this->localpath.DIRECTORY_SEPARATOR.$filename, $data['mode']);
     }
-    
+
+    /**
+     * Patch the local file with the new changes from the patch file.
+     *
+     * @param $filename The file to patch
+     * @param $data     The patch data
+     *
+     */
     public function patchFile($filename, $data)
     {
         $ret = rsync_patch_file($this->localpath.DIRECTORY_SEPARATOR.$filename, 
