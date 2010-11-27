@@ -133,7 +133,6 @@ php_rsync_file_open(zval **file, char *mode, char *name)
  */
 void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
 {
-	rsync_globals->tmp_dir = (char*)php_get_temporary_directory();
 }
 /* }}} */
 
@@ -141,6 +140,7 @@ void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
  */
 void php_rsync_globals_dtor(zend_rsync_globals  *rsync_globals TSRMLS_DC)
 {
+}
 /* }}} */
 
 /* {{{ PHP_MINIT_FUNCTION
