@@ -67,32 +67,38 @@ class rsyncClient
      * 
      * @param string $targetUrl Url of the Server
      * @param string $localpath Local directory to sync
-     * @param string $basepath  Remote base directory to sync if null the 
-     *                          default will be used at the server
      * @param string $direction Direction to sync 
      *                          f = client to server
      *                          b = server to client
+     * @param string $basepath  Remote base directory to sync if null the 
+     *                          default will be used at the server
      */
-    public function __construct($targetUrl, $localpath, $basepath = null, 
-            $direction = 'f') 
+    public function __construct($targetUrl, $localpath, $sapi_type, $direction = 'f', 
+         $basepath = null)
     {
-        
+        $msgblock = array('start' => '<h1 style="color:red">', 'end' => '</h1>');
+        if ($sapi_type == 'cli') {
+            $msgblock['start'] = '';
+            $msgblock['end'] = '\n';
+        }
         if (!$this->isValidURL($targetUrl)) {
-            echo "Given Url '$targetUrl' is not a valid URL\n";
-            rsyncClient::usage();
+            echo $msgblock['start']."Given Url '".$targetUrl.
+                "' is not a valid URL".$msgblock['end'];
+            rsyncClient::usage($sapi_type);
             throw new Exception("Given Url is not a valid URL", 1);
         }
         $this->targetUrl = $targetUrl;
         if (!is_dir($localpath) || !is_writable($localpath)) {
-            echo "Given local Directory '$localpath' is not a directory or/and".
-                " is not writeable\n";
-            rsyncClient::usage();
+            echo $msgblock['start']."Given local Directory '".$localpath.
+                "' is not a directory or/and is not writeable".$msgblock['end'];
+            rsyncClient::usage($sapi_type);
             throw new Exception("Given local Directory '$localpath' is not a".
                 "directory or/and is not writeable", 2);
         }
         if ($direction != 'f' && $direction != 'b') {
-            echo "No valid Direction given: '$direction'\n";
-            rsyncClient::usage();
+            echo $msgblock['start']."No valid Direction given: '".
+                $direction."'".$msgblock['end'];
+            rsyncClient::usage($sapi_type);
             throw new Exception("No valid Direction given: '$direction'", 3);
         }
         $this->direction = $direction;
@@ -105,8 +111,8 @@ class rsyncClient
     public function sync()
     {
         $this->getLocalStructur($this->localpath);
-	$curl = $this->prepareCurl();
-	$postdata = array();
+        $curl = $this->prepareCurl();
+        $postdata = array();
         $postdata['filelist'] = json_encode($this->structure);
         $postdata['direction'] = $this->direction;
         if (!empty($this->basepath)) $postdata['basepath'] = $this->basepath;
@@ -114,10 +120,10 @@ class rsyncClient
         if ($this->direction == 'f') {
             $postdata['step'] = 1;
             $this->serverToClient($curl, $postdata);
-	} else {
+        } else {
             // @TODO Implement the sync from client to server.
-	}
-
+        }
+        
     }
     
     /**
@@ -143,17 +149,15 @@ class rsyncClient
                 unlink($tmpname);
             }
         }
-	$postdata['signatures'] = json_encode($signaturFiles);
-
-	curl_setopt($curl, CURLOPT_POSTFIELDS, $postdata);
-
-	$response = $this->sendCurlRequest($curl);
+        $postdata['signatures'] = json_encode($signaturFiles);
+        curl_setopt($curl, CURLOPT_POSTFIELDS, $postdata);
+        $response = $this->sendCurlRequest($curl);
         
         if (!array_key_exists('changes', $response)) {
             throw new Exception("Missing the patches in the response".
                     " from Server", 12);
-	}
-	ksort($response['changes'], SORT_LOCALE_STRING);
+        }
+        ksort($response['changes'], SORT_LOCALE_STRING);
         foreach ($response['changes'] as $changeFile => $changeData) {
             switch ($changeData['changetype']) {
                 case 'newDir':
@@ -164,7 +168,7 @@ class rsyncClient
                     break;
                 case 'newFile':
                     $this->createFile($changeFile, $changeData);
-			break;
+                    break;
                 case 'delete':
                     unlink($changeFile);
                     break;
@@ -195,11 +199,10 @@ class rsyncClient
             throw new Exception("Response from Server is not understandable", 
                     10);
         }
-        if ($response == "ERROR") {
-            throw new Exception("Some Error on Server", 11);
-	}
-
-	return $response;
+        if (key_exists("ERROR", $response)) {
+            throw new Exception("Some Error on Server: ".$response["ERROR"], 11);
+        }
+    return $response;
     }
 
     /**
@@ -311,54 +314,122 @@ class rsyncClient
      * Print the usage to the console.
      * 
      */
-    public static function usage()
+    public static function usage($sapi_type)
     {
-        echo "Usage: php client.php -t <URL> -s <local> [-b <base>] ".
-            "[-d <direction<]\n".
-            "  -t <URL>       The url where the server.php will be found\n".
-            "  -b <base>      The base path where are configured in server.php".
-            " to sync.\n".
-            "                 Only needed if the server.php is configured with".
-            " multiple \n".
-            "                 basedirectories to sync.\n".
-            "  -s <local>     The local directory to sync\n".
-            "  -d <direction> The direction to sync. Default is 'f'.\n".
-            "                   f => from server to client\n".
-            "                   b => from client to server\n";
+        if ($sapi_type == 'cli') {
+            echo "Usage: php client.php -t <URL> -s <local> [-b <base>] ".
+                "[-d <direction<]\n".
+                "  -t <URL>       The url where the server.php will be ".
+                "found\n".
+                "  -b <base>      The base path where are configured in".
+                " server.php to sync.\n".
+                "                 Only needed if the server.php is configured".
+                " with multiple \n".
+                "                 basedirectories to sync.\n".
+                "  -s <local>     The local directory to sync\n".
+                "  -d <direction> The direction to sync. Default is 'f'.\n".
+                "                   f => from server to client\n".
+                "                   b => from client to server\n";
+        } else {
+            echo "<h2>This Software need follow parameters:</h2>";
+            echo "<table border=0><tr><th>Parameter</th><th>Description".
+                "</th></tr>";
+            echo "<tr><td>target</td><td>The url where the server.php will be".
+                " found</td></tr>";
+            echo "<tr><td>base</td>The base path where are configured in".
+                " server.php to sync.<td></td></tr>";
+            echo "<tr><td>local</td><td>The local directory to sync</td></tr>";
+            echo "<tr><td>direction</td><td></td></tr>";
+            echo "<tr><td></td><td>The direction to sync. Default is 'f'.".
+                "<br/> f => from server to client<br/>".
+                " b => from client to server</td></tr>";
+        }
     }
 
 }
+
+/**
+ * This is the part to get commandline parameters and init the rsyncClient 
+ * Class to sync with server.
+ */
+
+/**
+ * Target Url get from given parameters
+ * 
+ * @var string
+ */
 $targetUrl = '';
+/**
+ * Base directory on server to sync
+ * 
+ * @var string/null
+ */
 $base = null;
+/**
+ * Local directory to sync with server
+ * 
+ * @var string
+ */
 $local = '';
+/**
+ * Direction to sync. 
+ *     f => from server to client
+ *     b => from client to server (not implemented)
+ * 
+ * @var string
+ */
 $direction = 'f';
+/**
+ * Get string cli for sapi.
+ * 
+ * @var string
+ */
+$sapi_type = substr(php_sapi_name(), 0, 3);
 
-if (count($args) < 8) {
-    rsyncClient::usage();
-    exit(1);
-}
-
-for ($i=1; $i > count($args); $i=$i+2) {
-    switch ($args[$i]) {
-        case '-t':
-            $targetUrl = $args[$i+1];
-            break;
-        case '-b':
-            $base = $args[$i+1];
-            break;
-        case '-s':
-            $local = $args[$i+1];
-            break;
-        case '-d':
-            $direction = $args[$i+1];
-            break;
-        case '-h':
-            rsyncClient::usage();
-            exit;
-            break;
-        default:
-            echo "Unknow option ".$args[$i]."\n";
-            usage();
-            break;
+if ($sapi_type == 'cli') {
+    if ($_SERVER['argc'] < 8) {
+        rsyncClient::usage($sapi_type);
+        exit(1);
+    }
+    
+    for ($i=1; $i > $argc; $i=$i+2) {
+        switch ($_SERVER['argv'][$i]) {
+            case '-t':
+                $targetUrl = $_SERVER['argv'][$i+1];
+                break;
+            case '-b':
+                $base = $_SERVER['argv'][$i+1];
+                break;
+            case '-s':
+                $local = $_SERVER['argv'][$i+1];
+                break;
+            case '-d':
+                $direction = $_SERVER['argv'][$i+1];
+                break;
+            case '-h':
+                rsyncClient::usage($sapi_type);
+                exit(2);
+                break;
+            default:
+                echo "Unknow option ".$_SERVER['argv'][$i]."\n";
+                rsyncClient::usage($sapi_type);
+                exit(3);
+                break;
+        }
+    }
+} else {
+    if (isset($_REQUEST['target'])) $targetUrl = $_REQUEST['target'];
+    if (isset($_REQUEST['base'])) $base = $_REQUEST['base'];
+    if (isset($_REQUEST['local'])) $local = $_REQUEST['local'];
+    if (isset($_REQUEST['dir'])) $direction = $_REQUEST['dir'];
+    if (empty($targetUrl) || empty($local) || 
+         ($direction != 'f' && $direction != 'b') || 
+         (empty($base) && !is_null($base))) {
+        echo '<h1 style="color:red;">The given parameters are wrong!</h1>';
+        rsyncClient::usage($sapi_type);
+        exit(4);
     }
 }
+$rClient = new rsyncClient($targetUrl, $local, $sapi_type, $direction, $base);
+
+$rClient->sync();

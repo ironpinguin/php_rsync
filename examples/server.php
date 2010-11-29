@@ -169,14 +169,15 @@ class rsyncServer
 
 // check if the Request Parameter step is given
 if (!isset($_REQUEST['step'])) {
-    echo json_encode("ERROR");
+    echo json_encode(array("ERROR" => "No step parameter is given in the request."));
+    exit;
 }
 
 // Check if Basepath parameter is send from the client.
 // If not use the default from configuration (see the begin of this file).
 if (isset($_REQUEST['basepath'])) {
     if (!in_array($_REQUEST['basepath'], $syncpathes)) {
-        echo json_encode("ERROR");
+        echo json_encode(array("ERROR" => "Basepath '".$_REQUEST['basepath']."' is unknown."));
         exit;
     }
     $localpath = $_REQUEST['basepath'];
@@ -186,15 +187,16 @@ if (isset($_REQUEST['basepath'])) {
 
 // Check if the sync direction is given and has the right parameter.
 if ($_REQUEST['direction'] != 'f' && $_REQUEST['direction'] != 'b') {
-    echo json_encode("ERROR");
+    echo json_encode(array("ERROR" => "No direction parameter is given."));
     exit;
 }
 
+// Get the Direction of the request.
 $direction = $_REQUEST['direction'];
 
-
+// Exit with error if filelist is not given.
 if (!isset($_REQUEST['filelist']) && empty($_REQUEST['filelist'])) {
-    echo json_encode("ERROR");
+    echo json_encode(array("ERROR" => "No filelist is send."));
     exit;
 }
 // decode the json encoded filelist parameter
@@ -204,13 +206,13 @@ $remoteStructure = json_decode($_REQUEST['filelist']);
 $signatures = null;
 if ($direction == 'f') {
     if (!isset($_REQUEST['signatures'])) {
-        echo json_encode("ERROR");
+        echo json_encode(array("ERROR" => "missing the signatures array."));
         exit;
     }
     $signatures = json_decode($_REQUEST['signatures']);
 } else {
     // @TODO Client to Server sync is not implemented.
-    echo json_encode("ERROR");
+    echo json_encode(array("ERROR" => "Direction from client to server is not implemented."));
     exit;
 }
 
@@ -218,27 +220,28 @@ if ($direction == 'f') {
 try {
     $server = new rsyncServer($localpath, $direction);
 } catch (Exception $e) {
-    echo json_encode("ERROR");
+    echo json_encode(array("ERROR" => 
+    	"Rsync server failed with code ".$e->getCode()." and message: ".$e->getMessage()));
     exit;
 }
 
 // Switch between the diffrent Steps of Syncing (Server to Client sync has only one step).
 switch ($_REQUEST['step']) {
     case '1':
-	if ($direction == 'f') {
+    if ($direction == 'f') {
             echo $server->serverToClientSync($remoteStructure, $signatures);
             break;
         } else {
             // @TODO Client to Server Sync is not implemented.
             break;
-	}
-	break;
+    }
+    break;
     case '2':
         // @TODO Client to Server sync is not impelemented.
-        echo json_encode("ERROR");
+        echo json_encode(array("ERROR" => "Step 2 is not implemented."));
         break;
     default:
         // Unknowed Step given!
-        echo json_encode("ERROR");
+        echo json_encode(array("ERROR" => "Unknowen Step '".$_REQUEST['step'].". given!"));
         break;
 }
