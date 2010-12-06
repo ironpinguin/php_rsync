@@ -51,6 +51,8 @@ ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	char *tmp_dir;
 	long block_length;
 	long strong_length;
+	rs_stats_t stats;
+	rs_result ret;
 ZEND_END_MODULE_GLOBALS(rsync)
 
 #ifdef ZTS

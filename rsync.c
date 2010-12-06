@@ -24,15 +24,12 @@
 
 #include "librsync.h"
 
-typedef enum {
-	FILE_NAME = 0,
-	FILE_CONTENT = 1
-} input_type;
-
 ZEND_DECLARE_MODULE_GLOBALS(rsync)
 
 /* True global resources - no need for thread safety here */
 static int le_rsync;
+
+rs_trace_fn_t *php_rsync_log_fn = php_rsync_log;
 
 /* {{{ rsync_functions[]
  *
@@ -129,10 +126,21 @@ php_rsync_file_open(zval **file, char *mode, char *name)
 }
 /* }}} */
 
+/* {{{ php_rsync_log(int level, char *msg)
+ * Function to registered for logging the messages from the librsync library.
+ */
+void php_rsync_log(int level, const char *msg)
+{
+    
+}
+/* }}} */
+
+
 /* {{{ php_rsync_globals_ctor
  */
 void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
 {
+
 }
 /* }}} */
 
@@ -140,6 +148,7 @@ void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
  */
 void php_rsync_globals_dtor(zend_rsync_globals  *rsync_globals TSRMLS_DC)
 {
+
 }
 /* }}} */
 
@@ -148,6 +157,8 @@ void php_rsync_globals_dtor(zend_rsync_globals  *rsync_globals TSRMLS_DC)
 PHP_MINIT_FUNCTION(rsync)
 {
 	ZEND_INIT_MODULE_GLOBALS(rsync, php_rsync_globals_ctor, php_rsync_globals_dtor);
+	
+	rs_trace_ts(php_rsync_log_fn);
 
 	REGISTER_LONG_CONSTANT("RSYNC_DONE", RS_DONE, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RSYNC_BLOCKED", RS_BLOCKED, CONST_CS | CONST_PERSISTENT);
@@ -260,9 +271,6 @@ PHP_FUNCTION(rsync_generate_signature)
 	int file_len;
 	int sigfile_len;
 	FILE *infile, *signaturfile;
-	input_type inputtype = 0;
-	rs_stats_t stats;
-	rs_result ret;
 	php_stream *infile_stream, *sigfile_stream;
 
 	if (zend_parse_parameters(argc TSRMLS_CC, "ZZ", &file, &sigfile) == FAILURE)
@@ -274,12 +282,12 @@ PHP_FUNCTION(rsync_generate_signature)
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, REPORT_ERRORS);
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
-	ret = rs_sig_file(infile, signaturfile, rsync_globals.block_length, rsync_globals.strong_length, &stats);
+	rsync_globals.ret = rs_sig_file(infile, signaturfile, rsync_globals.block_length, rsync_globals.strong_length, &rsync_globals.stats);
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
 
-	RETURN_LONG(ret);
+	RETURN_LONG(rsync_globals.ret);
 }
 /* }}} */
 
@@ -297,11 +305,8 @@ PHP_FUNCTION(rsync_generate_delta)
 	int sigfile_len;
 	int file_len;
 	int deltafile_len;
-	input_type inputtype = 0;
 	FILE *signaturfile, *infile, *delta;
-    rs_result       ret;
     rs_signature_t  *sumset;
-    rs_stats_t      stats1, stats2;
     php_stream *infile_stream, *sigfile_stream, *deltafile_stream;
 
 	if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &sigfile, &file, &deltafile, &deltafile_len) == FAILURE)
@@ -311,16 +316,16 @@ PHP_FUNCTION(rsync_generate_delta)
 
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
-	ret = rs_loadsig_file(signaturfile, &sumset, &stats1);
-	if (ret != RS_DONE) {
-		RETURN_LONG(ret);
+	rsync_globals.ret = rs_loadsig_file(signaturfile, &sumset, &rsync_globals.stats);
+	if (rsync_globals.ret != RS_DONE) {
 		php_stream_close(sigfile_stream);
+		RETURN_LONG(rsync_globals.ret);
 	}
 
-	ret = rs_build_hash_table(sumset);
-	if (ret != RS_DONE) {
-		RETURN_LONG(ret);
+	rsync_globals.ret = rs_build_hash_table(sumset);
+	if (rsync_globals.ret != RS_DONE) {
 		php_stream_close(sigfile_stream);
+		RETURN_LONG(rsync_globals.ret);
 	}
 
 	infile_stream = php_rsync_file_open(file, "rb", file2);
@@ -329,13 +334,13 @@ PHP_FUNCTION(rsync_generate_delta)
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, 1);
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta, 1);
 
-	ret = rs_delta_file(sumset, infile, delta, &stats2);
+	rsync_globals.ret = rs_delta_file(sumset, infile, delta, &rsync_globals.stats);
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(deltafile_stream);
 
-	RETURN_LONG(ret);
+	RETURN_LONG(rsync_globals.ret);
 }
 /* }}} */
 
@@ -353,10 +358,7 @@ PHP_FUNCTION(rsync_patch_file)
 	int file_len;
 	int deltafile_len;
 	int newfile_len;
-	input_type inputtype = 0;
     FILE        *basis_file, *delta_file, *new_file;
-    rs_stats_t  stats;
-    rs_result   ret;
     php_stream *basisfile_stream, *newfile_stream, *deltafile_stream;
 
 	if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &file, &deltafile, &newfile) == FAILURE)
@@ -370,13 +372,13 @@ PHP_FUNCTION(rsync_patch_file)
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta_file, 1);
 	php_stream_cast(newfile_stream, PHP_STREAM_AS_STDIO, (void**)&new_file, 1);
 
-	ret = rs_patch_file(basis_file, delta_file, new_file, &stats);
+	rsync_globals.ret = rs_patch_file(basis_file, delta_file, new_file, &rsync_globals.stats);
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(basisfile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(newfile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(deltafile_stream);
 
-	RETURN_LONG(ret);
+	RETURN_LONG(rsync_globals.ret);
 
 }
 /* }}} */
