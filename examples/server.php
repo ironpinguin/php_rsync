@@ -86,11 +86,14 @@ class rsyncServer
         foreach ($remoteStructure as $name => $data) {
             if (array_key_exists($name, $this->structure)) {
                 $patch = $this->createPatch($name, $signatures[$name]);
-                if ($patch === false) return json_encode("ERROR");
+                if (is_array($patch)) 
+                    return json_encode(array("ERROR" => 
+                        "Patchfile generation Error ".$patch['ERROR'].
+                        ", File: $name"));
                 $this->result['changes'][$name] = $this->structure[$name];
                 $this->result['changes'][$name]['patch'] = $patch;
                 $this->result['changes'][$name]['changetype'] = 'patch';
-	    } else {
+        } else {
                 $this->result['changes'][$name] = $this->structure[$name];
                 $this->result['changes'][$name]['changetype'] = 'delete';
             }
@@ -103,14 +106,14 @@ class rsyncServer
                 } else {
                     $this->result['changes'][$name]['changetype'] = 'newFile';
                     $this->result['changes'][$name]['content'] = 
-                            file_get_contents($this->localpath.
-                                    DIRECTORY_SEPARATOR.$name);
+                            base64_encode(file_get_contents($this->localpath.
+                                    DIRECTORY_SEPARATOR.$name));
                 }
             }
         }
         return json_encode($this->result);
     }
-    
+   
     /**
      *
      * @param type $name
@@ -120,14 +123,14 @@ class rsyncServer
     public function createPatch($name, $signature) {
         $patchfile = tempnam(sys_get_temp_dir(), 'patch');
         $sighandle = fopen('data://text/plain;base64,'.
-                base64_encode($signature), 'rb');
+                $signature, 'rb');
         $ret = rsync_generate_delta($sighandle, 
                 $this->localpath.DIRECTORY_SEPARATOR.$name, $patchfile);
         fclose($sighandle);
         if ($ret != RSYNC_DONE) {
-            return false;
+            return array("ERROR" => $ret);
         }
-        $patch = file_get_contents($patchfile);
+        $patch = base64_encode(file_get_contents($patchfile));
         unlink($patchfile);
         return $patch;
     }
@@ -145,7 +148,7 @@ class rsyncServer
     {
         $actualDirContent = scandir($dir);
         foreach( $actualDirContent as $dentry) {
-            if ($dentry != '.' || $dentry != '..') {
+            if ($dentry != '.' && $dentry != '..') {
                 $type = filetype($dir."/".$dentry);
                 if ($type != 'dir' && $type != 'file') continue;
                 $stats = stat($dir."/".$dentry);
@@ -153,6 +156,7 @@ class rsyncServer
                     throw new Exception("Filestats for ".$dir."/".$dentry.
                             " ist not readable!", 9);
                 }
+                $mode = sprintf("0%o", ($stats['mode'] & 000777));
                 $this->structure[$prefix.'/'.$dentry] = array(
                     'name' => $prefix.'/'.$dentry,
                     'type' => $type, 'rights' => $stats['mode'],
@@ -169,7 +173,8 @@ class rsyncServer
 
 // check if the Request Parameter step is given
 if (!isset($_REQUEST['step'])) {
-    echo json_encode(array("ERROR" => "No step parameter is given in the request."));
+    echo json_encode(array("ERROR" => 
+        "No step parameter is given in the request."));
     exit;
 }
 
@@ -177,7 +182,8 @@ if (!isset($_REQUEST['step'])) {
 // If not use the default from configuration (see the begin of this file).
 if (isset($_REQUEST['basepath'])) {
     if (!in_array($_REQUEST['basepath'], $syncpathes)) {
-        echo json_encode(array("ERROR" => "Basepath '".$_REQUEST['basepath']."' is unknown."));
+        echo json_encode(array("ERROR" => "Basepath '".$_REQUEST['basepath'].
+            "' is unknown."));
         exit;
     }
     $localpath = $_REQUEST['basepath'];
@@ -200,7 +206,7 @@ if (!isset($_REQUEST['filelist']) && empty($_REQUEST['filelist'])) {
     exit;
 }
 // decode the json encoded filelist parameter
-$remoteStructure = json_decode($_REQUEST['filelist']);
+$remoteStructure = json_decode($_REQUEST['filelist'], true);
 
 // Get the signatures from client if direction is serverToClient (f)
 $signatures = null;
@@ -209,10 +215,11 @@ if ($direction == 'f') {
         echo json_encode(array("ERROR" => "missing the signatures array."));
         exit;
     }
-    $signatures = json_decode($_REQUEST['signatures']);
+    $signatures = json_decode($_REQUEST['signatures'], true);
 } else {
     // @TODO Client to Server sync is not implemented.
-    echo json_encode(array("ERROR" => "Direction from client to server is not implemented."));
+    echo json_encode(array("ERROR" => 
+        "Direction from client to server is not implemented."));
     exit;
 }
 
@@ -221,11 +228,13 @@ try {
     $server = new rsyncServer($localpath, $direction);
 } catch (Exception $e) {
     echo json_encode(array("ERROR" => 
-    	"Rsync server failed with code ".$e->getCode()." and message: ".$e->getMessage()));
+        "Rsync server failed with code ".$e->getCode().
+        " and message: ".$e->getMessage()));
     exit;
 }
 
-// Switch between the diffrent Steps of Syncing (Server to Client sync has only one step).
+// Switch between the diffrent Steps of Syncing 
+// (Server to Client sync has only one step).
 switch ($_REQUEST['step']) {
     case '1':
     if ($direction == 'f') {
@@ -242,6 +251,7 @@ switch ($_REQUEST['step']) {
         break;
     default:
         // Unknowed Step given!
-        echo json_encode(array("ERROR" => "Unknowen Step '".$_REQUEST['step'].". given!"));
+        echo json_encode(array("ERROR" => "Unknowen Step '".
+            $_REQUEST['step'].". given!"));
         break;
 }
