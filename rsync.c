@@ -285,12 +285,12 @@ PHP_FUNCTION(rsync_generate_signature)
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, REPORT_ERRORS);
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
-	rsync_globals.ret = rs_sig_file(infile, signaturfile, rsync_globals.block_length, rsync_globals.strong_length, &rsync_globals.stats);
+	RSYNC_G(ret) = rs_sig_file(infile, signaturfile, RSYNC_G(block_length), RSYNC_G(strong_length), &RSYNC_G(stats));
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
 
-	RETURN_LONG(rsync_globals.ret);
+	RETURN_LONG(RSYNC_G(ret));
 }
 /* }}} */
 
@@ -319,16 +319,16 @@ PHP_FUNCTION(rsync_generate_delta)
 
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
-	rsync_globals.ret = rs_loadsig_file(signaturfile, &sumset, &rsync_globals.stats);
-	if (rsync_globals.ret != RS_DONE) {
+	RSYNC_G(ret) = rs_loadsig_file(signaturfile, &sumset, &RSYNC_G(stats));
+	if (RSYNC_G(ret) != RS_DONE) {
 		php_stream_close(sigfile_stream);
-		RETURN_LONG(rsync_globals.ret);
+		RETURN_LONG(RSYNC_G(ret));
 	}
 
-	rsync_globals.ret = rs_build_hash_table(sumset);
-	if (rsync_globals.ret != RS_DONE) {
+	RSYNC_G(ret) = rs_build_hash_table(sumset);
+	if (RSYNC_G(ret) != RS_DONE) {
 		php_stream_close(sigfile_stream);
-		RETURN_LONG(rsync_globals.ret);
+		RETURN_LONG(RSYNC_G(ret));
 	}
 
 	infile_stream = php_rsync_file_open(file, "rb", file2);
@@ -337,13 +337,13 @@ PHP_FUNCTION(rsync_generate_delta)
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, 1);
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta, 1);
 
-	rsync_globals.ret = rs_delta_file(sumset, infile, delta, &rsync_globals.stats);
+	RSYNC_G(ret) = rs_delta_file(sumset, infile, delta, &RSYNC_G(stats));
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(deltafile_stream);
 
-	RETURN_LONG(rsync_globals.ret);
+	RETURN_LONG(RSYNC_G(ret));
 }
 /* }}} */
 
@@ -375,13 +375,13 @@ PHP_FUNCTION(rsync_patch_file)
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta_file, 1);
 	php_stream_cast(newfile_stream, PHP_STREAM_AS_STDIO, (void**)&new_file, 1);
 
-	rsync_globals.ret = rs_patch_file(basis_file, delta_file, new_file, &rsync_globals.stats);
+	RSYNC_G(ret) = rs_patch_file(basis_file, delta_file, new_file, &RSYNC_G(stats));
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(basisfile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(newfile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(deltafile_stream);
 
-	RETURN_LONG(rsync_globals.ret);
+	RETURN_LONG(RSYNC_G(ret));
 
 }
 /* }}} */
