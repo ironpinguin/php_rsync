@@ -20,9 +20,10 @@
 #include "php.h"
 #include "php_ini.h"
 #include "ext/standard/info.h"
+
+#include <librsync.h>
 #include "php_rsync.h"
 
-#include "librsync.h"
 
 ZEND_DECLARE_MODULE_GLOBALS(rsync)
 
@@ -158,7 +159,7 @@ PHP_MINIT_FUNCTION(rsync)
 {
 	ZEND_INIT_MODULE_GLOBALS(rsync, php_rsync_globals_ctor, php_rsync_globals_dtor);
 	
-	rs_trace_ts(php_rsync_log_fn);
+	rs_trace_to(php_rsync_log_fn);
 
 	REGISTER_LONG_CONSTANT("RSYNC_DONE", RS_DONE, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RSYNC_BLOCKED", RS_BLOCKED, CONST_CS | CONST_PERSISTENT);
