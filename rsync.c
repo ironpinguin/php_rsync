@@ -38,6 +38,7 @@ const zend_function_entry rsync_functions[] = {
 	PHP_FE(rsync_generate_signature,	NULL)
 	PHP_FE(rsync_generate_delta,	NULL)
 	PHP_FE(rsync_patch_file,	NULL)
+	PHP_FE(rsync_set_log_callback, NULL)
 	{NULL, NULL, NULL}	/* Must be the last line in rsync_functions[] */
 };
 /* }}} */
@@ -81,6 +82,7 @@ static void php_rsync_init_globals(zend_rsync_globals *rsync_globals)
 {
 	rsync_globals->block_length = RS_DEFAULT_BLOCK_LEN;
 	rsync_globals->strong_length = RS_DEFAULT_STRONG_LEN;
+	rsync_globals->has_log_cb = 0;
 }
 /* }}} */
 
@@ -130,7 +132,23 @@ php_rsync_file_open(zval **file, char *mode, char *name)
  */
 void php_rsync_log(int level, const char *msg)
 {
-    
+	zval *params, *retval_ptr = NULL;
+
+	if (RSYNC_G(has_log_cb)) {
+		MAKE_STD_ZVAL(params);
+		array_init_size(params, 2);
+		add_next_index_long(params, (long)level);
+		add_next_index_string(params, msg, 0);
+		zend_fcall_info_args(&RSYNC_G(log_cb).fci, params TSRMLS_CC);
+
+		RSYNC_G(log_cb).fci.retval_ptr_ptr = &retval_ptr;
+
+		if (zend_call_function(&RSYNC_G(log_cb).fci, &RSYNC_G(log_cb).fci_cache TSRMLS_CC) == SUCCESS && RSYNC_G(log_cb).fci.retval_ptr_ptr && *RSYNC_G(log_cb).fci.retval_ptr_ptr) {
+				/* TODO handle the return value? */
+		}
+
+		zend_fcall_info_args_clear(&RSYNC_G(log_cb).fci, 1);
+	}
 }
 /* }}} */
 
@@ -156,8 +174,6 @@ void php_rsync_globals_dtor(zend_rsync_globals  *rsync_globals TSRMLS_DC)
 PHP_MINIT_FUNCTION(rsync)
 {
 	ZEND_INIT_MODULE_GLOBALS(rsync, php_rsync_globals_ctor, php_rsync_globals_dtor);
-	
-	rs_trace_to(php_rsync_log);
 
 	REGISTER_LONG_CONSTANT("RSYNC_DONE", RS_DONE, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RSYNC_BLOCKED", RS_BLOCKED, CONST_CS | CONST_PERSISTENT);
@@ -389,9 +405,25 @@ PHP_FUNCTION(rsync_patch_file)
 /* proto rsync_set_log_callback(string|array callback) set logging callback*/
 PHP_FUNCTION(rsync_set_log_callback)
 {
-/*	if (zend_parse_parameters(argc TSRMLS_CC, "f") == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "f", &RSYNC_G(log_cb).fci,
+			                  &RSYNC_G(log_cb).fci_cache) == FAILURE) {
+		RSYNC_G(has_log_cb) = 0;
+
 		return;
-	}*/
+	}
+
+	if (RSYNC_G(log_cb).fci_cache.function_handler->common.num_args != 2) {
+		RSYNC_G(has_log_cb) = 0;
+		php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
+				"Log callback has %d formal arguments, but must have 2",
+				RSYNC_G(log_cb).fci_cache.function_handler->common.num_args);
+
+		return;
+	}
+
+	RSYNC_G(has_log_cb) = 1;
+
+	rs_trace_to(php_rsync_log);
 }
 /* }}} */
 

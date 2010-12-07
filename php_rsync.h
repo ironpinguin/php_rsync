@@ -54,10 +54,11 @@ ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	long strong_length;
 	rs_stats_t stats;
 	rs_result ret;
-	struct _rsync_log_callback {
+	struct _log_callback {
 	    zend_fcall_info fci;
 		zend_fcall_info_cache fci_cache;
-	} rsync_log_callback;
+	} log_cb;
+	int has_log_cb;
 ZEND_END_MODULE_GLOBALS(rsync)
 
 #ifdef ZTS
