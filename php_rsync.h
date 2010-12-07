@@ -46,6 +46,7 @@ PHP_MINFO_FUNCTION(rsync);
 PHP_FUNCTION(rsync_generate_signature);
 PHP_FUNCTION(rsync_generate_delta);
 PHP_FUNCTION(rsync_patch_file);
+PHP_FUNCTION(rsync_set_log_callback);
 
 ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	char *tmp_dir;
@@ -53,6 +54,10 @@ ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	long strong_length;
 	rs_stats_t stats;
 	rs_result ret;
+	struct _rsync_log_callback {
+	    zend_fcall_info fci;
+		zend_fcall_info_cache fci_cache;
+	} rsync_log_callback;
 ZEND_END_MODULE_GLOBALS(rsync)
 
 #ifdef ZTS

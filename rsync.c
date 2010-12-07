@@ -30,8 +30,6 @@ ZEND_DECLARE_MODULE_GLOBALS(rsync)
 /* True global resources - no need for thread safety here */
 static int le_rsync;
 
-rs_trace_fn_t *php_rsync_log_fn = php_rsync_log;
-
 /* {{{ rsync_functions[]
  *
  * Every user visible function must have an entry in rsync_functions[].
@@ -159,7 +157,7 @@ PHP_MINIT_FUNCTION(rsync)
 {
 	ZEND_INIT_MODULE_GLOBALS(rsync, php_rsync_globals_ctor, php_rsync_globals_dtor);
 	
-	rs_trace_to(php_rsync_log_fn);
+	rs_trace_to(php_rsync_log);
 
 	REGISTER_LONG_CONSTANT("RSYNC_DONE", RS_DONE, CONST_CS | CONST_PERSISTENT);
 	REGISTER_LONG_CONSTANT("RSYNC_BLOCKED", RS_BLOCKED, CONST_CS | CONST_PERSISTENT);
@@ -256,6 +254,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_patch_file, 0, 0, 3)
 	ZEND_ARG_INFO(0, file)
 	ZEND_ARG_INFO(0, deltafile)
 	ZEND_ARG_INFO(0, newfile)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_set_log_callback, 0, 0, 1)
+	ZEND_ARG_INFO(0, callback)
 ZEND_END_ARG_INFO()
 
 /* }}} */
@@ -384,6 +386,14 @@ PHP_FUNCTION(rsync_patch_file)
 }
 /* }}} */
 
+/* proto rsync_set_log_callback(string|array callback) set logging callback*/
+PHP_FUNCTION(rsync_set_log_callback)
+{
+/*	if (zend_parse_parameters(argc TSRMLS_CC, "f") == FAILURE) {
+		return;
+	}*/
+}
+/* }}} */
 
 /*
  * Local variables:
