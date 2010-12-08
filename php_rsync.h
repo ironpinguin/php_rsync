@@ -47,6 +47,9 @@ PHP_FUNCTION(rsync_generate_signature);
 PHP_FUNCTION(rsync_generate_delta);
 PHP_FUNCTION(rsync_patch_file);
 PHP_FUNCTION(rsync_set_log_callback);
+PHP_FUNCTION(rsync_set_log_level);
+PHP_FUNCTION(rsync_error);
+PHP_FUNCTION(rsync_set_stats_callback);
 
 ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	char *tmp_dir;
@@ -59,6 +62,11 @@ ZEND_BEGIN_MODULE_GLOBALS(rsync)
 		zend_fcall_info_cache fci_cache;
 	} log_cb;
 	int has_log_cb;
+	struct _stats_callback {
+	    zend_fcall_info fci;
+		zend_fcall_info_cache fci_cache;
+	} stats_cb;
+	int has_stats_cb;
 ZEND_END_MODULE_GLOBALS(rsync)
 
 #ifdef ZTS
