@@ -41,6 +41,7 @@ const zend_function_entry rsync_functions[] = {
 	PHP_FE(rsync_set_log_callback, NULL)
 	PHP_FE(rsync_set_log_level, NULL)
 	PHP_FE(rsync_error, NULL)
+	PHP_FE(rsync_set_stats_callback, NULL)
 	{NULL, NULL, NULL}	/* Must be the last line in rsync_functions[] */
 };
 /* }}} */
@@ -131,10 +132,14 @@ php_rsync_file_open(zval **file, char *mode, char *name)
 
 /* {{{ php_rsync_log(int level, char *msg)
  * Function to registered for logging the messages from the librsync library.
+ *
+ * FIXME watch how that works in a ts environment
  */
 void php_rsync_log(int level, const char *msg)
 {
 	zval *params, *retval_ptr = NULL;
+
+	TSRMLS_FETCH();
 
 	if (RSYNC_G(has_log_cb)) {
 		MAKE_STD_ZVAL(params);
@@ -154,6 +159,34 @@ void php_rsync_log(int level, const char *msg)
 }
 /* }}} */
 
+/* {{{ php_rsync_stats(TSRMLS_D) run php rsync stats callback*/
+void php_rsync_stats(TSRMLS_D)
+{
+	zval *stats, *params, *retval_ptr = NULL;
+	int ret;
+
+	if (RSYNC_G(has_stats_cb)) {
+		MAKE_STD_ZVAL(params);
+		array_init_size(params, 2);
+
+		add_next_index_long(params, (long)RSYNC_G(ret));
+
+		MAKE_STD_ZVAL(stats);
+		array_init(stats);
+
+		add_next_index_zval(params, stats);
+		zend_fcall_info_args(&RSYNC_G(stats_cb).fci, params TSRMLS_CC);
+
+		RSYNC_G(stats_cb).fci.retval_ptr_ptr = &retval_ptr;
+
+		if (zend_call_function(&RSYNC_G(stats_cb).fci, &RSYNC_G(stats_cb).fci_cache TSRMLS_CC) == SUCCESS && RSYNC_G(stats_cb).fci.retval_ptr_ptr && *RSYNC_G(stats_cb).fci.retval_ptr_ptr) {
+				/* TODO handle the return value? */
+		}
+
+		zend_fcall_info_args_clear(&RSYNC_G(stats_cb).fci, 1);
+	}
+}
+/* }}} */
 
 /* {{{ php_rsync_globals_ctor
  */
@@ -308,6 +341,7 @@ PHP_FUNCTION(rsync_generate_signature)
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
 	RSYNC_G(ret) = rs_sig_file(infile, signaturfile, RSYNC_G(block_length), RSYNC_G(strong_length), &RSYNC_G(stats));
+	php_rsync_stats(TSRMLS_C);
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
@@ -346,6 +380,7 @@ PHP_FUNCTION(rsync_generate_delta)
 		php_stream_close(sigfile_stream);
 		RETURN_LONG(RSYNC_G(ret));
 	}
+	php_rsync_stats(TSRMLS_C);
 
 	RSYNC_G(ret) = rs_build_hash_table(sumset);
 	if (RSYNC_G(ret) != RS_DONE) {
@@ -360,6 +395,7 @@ PHP_FUNCTION(rsync_generate_delta)
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta, 1);
 
 	RSYNC_G(ret) = rs_delta_file(sumset, infile, delta, &RSYNC_G(stats));
+	php_rsync_stats(TSRMLS_C);
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
@@ -398,6 +434,7 @@ PHP_FUNCTION(rsync_patch_file)
 	php_stream_cast(newfile_stream, PHP_STREAM_AS_STDIO, (void**)&new_file, 1);
 
 	RSYNC_G(ret) = rs_patch_file(basis_file, delta_file, new_file, &RSYNC_G(stats));
+	php_rsync_stats(TSRMLS_C);
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(basisfile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(newfile_stream);
@@ -408,7 +445,7 @@ PHP_FUNCTION(rsync_patch_file)
 }
 /* }}} */
 
-/* proto rsync_set_log_callback(string|array callback) set logging callback*/
+/* {{{ proto rsync_set_log_callback(string|array callback) set logging callback*/
 PHP_FUNCTION(rsync_set_log_callback)
 {
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "f", &RSYNC_G(log_cb).fci,
@@ -434,7 +471,7 @@ PHP_FUNCTION(rsync_set_log_callback)
 /* }}} */
 
 
-/* proto rsync_set_log_callback(string|array callback) set logging callback*/
+/* {{{ proto rsync_set_log_callback(string|array callback) set logging callback */
 PHP_FUNCTION(rsync_set_log_level)
 {
 	long level = 0;
@@ -453,7 +490,7 @@ PHP_FUNCTION(rsync_set_log_level)
 }
 /* }}} */
 
-/* proto rsync_error(integer result) get the string representation of a rsync result */
+/* {{{ proto rsync_error(integer result) get the string representation of a rsync result */
 PHP_FUNCTION(rsync_error)
 {
 	long result = -1;
@@ -464,7 +501,31 @@ PHP_FUNCTION(rsync_error)
 
 	RETVAL_STRING(rs_strerror(result), 1);
 }
+/* }}} */
 
+
+/* {{{ proto rsync_set_stats_callback(string|array callback) set logging callback */
+PHP_FUNCTION(rsync_set_stats_callback)
+{
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "f", &RSYNC_G(stats_cb).fci,
+			                  &RSYNC_G(stats_cb).fci_cache) == FAILURE) {
+		RSYNC_G(has_stats_cb) = 0;
+
+		return;
+	}
+
+	if (RSYNC_G(stats_cb).fci_cache.function_handler->common.num_args != 2) {
+		RSYNC_G(has_stats_cb) = 0;
+		php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
+				"Stats callback has %d formal arguments, but must have 2",
+				RSYNC_G(stats_cb).fci_cache.function_handler->common.num_args);
+
+		return;
+	}
+
+	RSYNC_G(has_stats_cb) = 1;
+}
+/* }}} */
 /*
  * Local variables:
  * tab-width: 4
