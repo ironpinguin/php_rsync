@@ -40,6 +40,7 @@ const zend_function_entry rsync_functions[] = {
 	PHP_FE(rsync_patch_file,	NULL)
 	PHP_FE(rsync_set_log_callback, NULL)
 	PHP_FE(rsync_set_log_level, NULL)
+	PHP_FE(rsync_error, NULL)
 	{NULL, NULL, NULL}	/* Must be the last line in rsync_functions[] */
 };
 /* }}} */
@@ -277,6 +278,10 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_set_log_callback, 0, 0, 1)
 	ZEND_ARG_INFO(0, callback)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_error, 0, 0, 1)
+	ZEND_ARG_INFO(0, result)
+ZEND_END_ARG_INFO()
+
 /* }}} */
 
 /* {{{ proto int rsync_generate_signature(string file, string sigfile [, int block_len][, int strong_len ])
@@ -447,6 +452,18 @@ PHP_FUNCTION(rsync_set_log_level)
 	rs_trace_set_level(level);
 }
 /* }}} */
+
+/* proto rsync_error(integer result) get the string representation of a rsync result */
+PHP_FUNCTION(rsync_error)
+{
+	long result = -1;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &result) == FAILURE) {
+		return;
+	}
+
+	RETVAL_STRING(rs_strerror(result), 1);
+}
 
 /*
  * Local variables:
