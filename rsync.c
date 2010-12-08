@@ -39,6 +39,7 @@ const zend_function_entry rsync_functions[] = {
 	PHP_FE(rsync_generate_delta,	NULL)
 	PHP_FE(rsync_patch_file,	NULL)
 	PHP_FE(rsync_set_log_callback, NULL)
+	PHP_FE(rsync_set_log_level, NULL)
 	{NULL, NULL, NULL}	/* Must be the last line in rsync_functions[] */
 };
 /* }}} */
@@ -424,6 +425,26 @@ PHP_FUNCTION(rsync_set_log_callback)
 	RSYNC_G(has_log_cb) = 1;
 
 	rs_trace_to(php_rsync_log);
+}
+/* }}} */
+
+
+/* proto rsync_set_log_callback(string|array callback) set logging callback*/
+PHP_FUNCTION(rsync_set_log_level)
+{
+	long level = 0;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &level) == FAILURE) {
+		return;
+	}
+
+	if (level < RS_LOG_EMERG || level > RS_LOG_DEBUG) {
+		php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
+				"Invalid log level value");
+		return;
+	}
+
+	rs_trace_set_level(level);
 }
 /* }}} */
 

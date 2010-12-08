@@ -47,6 +47,7 @@ PHP_FUNCTION(rsync_generate_signature);
 PHP_FUNCTION(rsync_generate_delta);
 PHP_FUNCTION(rsync_patch_file);
 PHP_FUNCTION(rsync_set_log_callback);
+PHP_FUNCTION(rsync_set_log_level);
 
 ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	char *tmp_dir;
