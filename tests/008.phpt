@@ -1,9 +1,7 @@
 --TEST--
 Test function rsync_patch_file with stream as input and output.
 --SKIPIF--
-<?php if (!extension_loaded("rsync") || 
-          !file_exists("tests/007test.png") || 
-          !file_exists("tests/007test.patch")) print "skip"; ?>
+<?php if (!extension_loaded("rsync")) print "skip"; ?>
 --FILE--
 <?php 
 echo rsync_error(RSYNC_DONE) . "\n";
