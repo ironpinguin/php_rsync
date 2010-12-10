@@ -473,7 +473,7 @@ PHP_FUNCTION(rsync_error)
 {
 	long result = -1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|", &result) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &result) == FAILURE) {
 		return;
 	}
 
