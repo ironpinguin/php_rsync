@@ -41,7 +41,6 @@ const zend_function_entry rsync_functions[] = {
 	PHP_FE(rsync_set_log_callback, NULL)
 	PHP_FE(rsync_set_log_level, NULL)
 	PHP_FE(rsync_error, NULL)
-	PHP_FE(rsync_set_stats_callback, NULL)
 	{NULL, NULL, NULL}	/* Must be the last line in rsync_functions[] */
 };
 /* }}} */
@@ -76,6 +75,7 @@ ZEND_GET_MODULE(rsync)
 PHP_INI_BEGIN()
     STD_PHP_INI_ENTRY("rsync.block_length",  "2048", PHP_INI_ALL, OnUpdateLong, block_length, zend_rsync_globals, rsync_globals)
     STD_PHP_INI_ENTRY("rsync.strong_length", "8", PHP_INI_ALL, OnUpdateLong, strong_length, zend_rsync_globals, rsync_globals)
+    STD_PHP_INI_ENTRY("rsync.log_stats", "0", PHP_INI_ALL, OnUpdateLong, log_stats, zend_rsync_globals, rsync_globals)
 PHP_INI_END()
 /* }}} */
 
@@ -145,43 +145,11 @@ void php_rsync_log(int level, const char *msg)
 }
 /* }}} */
 
-/* {{{ php_rsync_stats(TSRMLS_D) run php rsync stats callback*/
-void php_rsync_stats(TSRMLS_D)
+/* {{{ php_rsync_log_stats */
+void php_rsync_log_stats(TSRMLS_D)
 {
-	zval *stats, *params, *retval_ptr = NULL;
-	int ret;
-
-	if (RSYNC_G(has_stats_cb)) {
-
-		MAKE_STD_ZVAL(params);
-		array_init_size(params, 2);
-
-		add_next_index_long(params, (long)RSYNC_G(ret));
-
-		MAKE_STD_ZVAL(stats);
-		array_init(stats);
-
-		add_assoc_string(stats, "op", RSYNC_G(stats).op, 1);
-		add_assoc_long(stats, "lit_cmds", RSYNC_G(stats).lit_cmds);
-		add_assoc_long(stats, "lit_bytes", RSYNC_G(stats).lit_bytes);
-		add_assoc_long(stats, "lit_cmdbytes", RSYNC_G(stats).lit_cmdbytes);
-		add_assoc_long(stats, "copy_cmds", RSYNC_G(stats).copy_cmds);
-		add_assoc_long(stats, "copy_bytes", RSYNC_G(stats).copy_bytes);
-		add_assoc_long(stats, "copy_cmdbytes", RSYNC_G(stats).copy_cmdbytes);
-		add_assoc_long(stats, "sig_cmds", RSYNC_G(stats).sig_cmds);
-		add_assoc_long(stats, "sig_bytes", RSYNC_G(stats).sig_bytes);
-		add_assoc_long(stats, "false_matches", RSYNC_G(stats).false_matches);
-		add_assoc_long(stats, "sig_blocks", RSYNC_G(stats).sig_blocks);
-		add_assoc_long(stats, "block_len", RSYNC_G(stats).block_len);
-		add_assoc_long(stats, "in_bytes", RSYNC_G(stats).in_bytes);
-		add_assoc_long(stats, "out_bytes", RSYNC_G(stats).out_bytes);
-
-		add_next_index_zval(params, stats);
-
-		zend_fcall_info_argn(&RSYNC_G(stats_cb).fci TSRMLS_CC, 2, &RSYNC_G(ret), &RSYNC_G(stats));
-		zend_fcall_info_call(&RSYNC_G(stats_cb).fci, &RSYNC_G(stats_cb).fcc, &retval_ptr, params TSRMLS_CC);
-
-		zend_fcall_info_args_clear(&RSYNC_G(stats_cb).fci, 1);
+	if (0 != RSYNC_G(log_stats)) {
+		rs_log_stats(&RSYNC_G(stats));
 	}
 }
 /* }}} */
@@ -192,12 +160,10 @@ void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
 {
 	rsync_globals->block_length = RS_DEFAULT_BLOCK_LEN;
 	rsync_globals->strong_length = RS_DEFAULT_STRONG_LEN;
+	rsync_globals->log_stats = 0;
 	rsync_globals->has_log_cb = 0;
-	rsync_globals->has_stats_cb = 0;
-	rsync_globals->stats_cb.fci.function_name = NULL;
 	rsync_globals->log_cb.fci.function_name = NULL;
 #if PHP_VERSION_ID >= 50300
-	rsync_globals->stats_cb.fci.object_ptr = NULL;
 	rsync_globals->log_cb.fci.object_ptr = NULL;
 #endif
 }
@@ -207,7 +173,9 @@ void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
  */
 void php_rsync_globals_dtor(zend_rsync_globals  *rsync_globals TSRMLS_DC)
 {
-
+	if (rsync_globals->has_log_cb) {
+		efree(&rsync_globals->log_cb);
+	}
 }
 /* }}} */
 
@@ -348,7 +316,7 @@ PHP_FUNCTION(rsync_generate_signature)
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
 	RSYNC_G(ret) = rs_sig_file(infile, signaturfile, RSYNC_G(block_length), RSYNC_G(strong_length), &RSYNC_G(stats));
-	php_rsync_stats(TSRMLS_C);
+	php_rsync_log_stats(TSRMLS_C);
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
@@ -387,7 +355,7 @@ PHP_FUNCTION(rsync_generate_delta)
 		php_stream_close(sigfile_stream);
 		RETURN_LONG(RSYNC_G(ret));
 	}
-	php_rsync_stats(TSRMLS_C);
+	php_rsync_log_stats(TSRMLS_C);
 
 	RSYNC_G(ret) = rs_build_hash_table(sumset);
 	if (RSYNC_G(ret) != RS_DONE) {
@@ -402,7 +370,7 @@ PHP_FUNCTION(rsync_generate_delta)
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta, 1);
 
 	RSYNC_G(ret) = rs_delta_file(sumset, infile, delta, &RSYNC_G(stats));
-	php_rsync_stats(TSRMLS_C);
+	php_rsync_log_stats(TSRMLS_C);
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
@@ -441,7 +409,7 @@ PHP_FUNCTION(rsync_patch_file)
 	php_stream_cast(newfile_stream, PHP_STREAM_AS_STDIO, (void**)&new_file, 1);
 
 	RSYNC_G(ret) = rs_patch_file(basis_file, delta_file, new_file, &RSYNC_G(stats));
-	php_rsync_stats(TSRMLS_C);
+	php_rsync_log_stats(TSRMLS_C);
 
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(basisfile_stream);
 	if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(newfile_stream);
@@ -505,39 +473,18 @@ PHP_FUNCTION(rsync_error)
 {
 	long result = -1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &result) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|", &result) == FAILURE) {
 		return;
+	}
+
+	if (-1 == result) {
+		result = RSYNC_G(ret);
 	}
 
 	RETVAL_STRING(rs_strerror(result), 1);
 }
 /* }}} */
 
-
-/* {{{ proto rsync_set_stats_callback(string|array callback) set logging callback */
-PHP_FUNCTION(rsync_set_stats_callback)
-{
-	zend_fcall_info fci;
-	zend_fcall_info_cache fcc;
-
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "f", &fci, &fcc) == FAILURE) {
-		RSYNC_G(has_stats_cb) = 0;
-		return;
-	}
-
-	RSYNC_G(stats_cb).fci = fci;
-	RSYNC_G(stats_cb).fcc = fcc;
-	Z_ADDREF_P(RSYNC_G(stats_cb).fci.function_name);
-
-#if PHP_VERSION_ID >= 50300
-	if (RSYNC_G(stats_cb).fci.object_ptr) {
-		Z_ADDREF_P(RSYNC_G(stats_cb).fci.object_ptr);
-	}
-#endif
-
-	RSYNC_G(has_stats_cb) = 1;
-}
-/* }}} */
 /*
  * Local variables:
  * tab-width: 4
