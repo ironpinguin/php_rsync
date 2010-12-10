@@ -19,6 +19,7 @@ echo rsync_error(RSYNC_UNIMPLEMENTED) . "\n";
 echo rsync_error(RSYNC_CORRUPT) . "\n";
 echo rsync_error(RSYNC_INTERNAL_ERROR) . "\n";
 echo rsync_error(RSYNC_PARAM_ERROR) . "\n";
+echo rsync_error() . "\n";
 ?>
 --EXPECT--
 OK
@@ -34,3 +35,4 @@ unimplemented case
 stream corrupt
 library internal error
 unexplained problem
+OK
