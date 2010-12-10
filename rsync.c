@@ -127,7 +127,7 @@ php_rsync_file_open(zval **file, char *mode, char *name)
  */
 void php_rsync_log(int level, const char *msg)
 {
-/*	zval *params, *retval_ptr = NULL;
+	zval *params, *retval_ptr = NULL;
 
 	TSRMLS_FETCH();
 
@@ -136,15 +136,12 @@ void php_rsync_log(int level, const char *msg)
 		array_init_size(params, 2);
 		add_next_index_long(params, (long)level);
 		add_next_index_string(params, msg, 0);
-		zend_fcall_info_args(&RSYNC_G(log_cb).fci, params TSRMLS_CC);
 
-		RSYNC_G(log_cb).fci.retval_ptr_ptr = &retval_ptr;
-
-		if (zend_call_function(&RSYNC_G(log_cb).fci, &RSYNC_G(log_cb).fci_cache TSRMLS_CC) == SUCCESS && RSYNC_G(log_cb).fci.retval_ptr_ptr && *RSYNC_G(log_cb).fci.retval_ptr_ptr) {
-		}
+		zend_fcall_info_argn(&RSYNC_G(log_cb).fci TSRMLS_CC, 2, &level, &msg);
+		zend_fcall_info_call(&RSYNC_G(log_cb).fci, &RSYNC_G(log_cb).fcc, &retval_ptr, params TSRMLS_CC);
 
 		zend_fcall_info_args_clear(&RSYNC_G(log_cb).fci, 1);
-	}*/
+	}
 }
 /* }}} */
 
@@ -167,15 +164,6 @@ void php_rsync_stats(TSRMLS_D)
 		add_assoc_string(stats, "op", RSYNC_G(stats).op, 1);
 
 		add_next_index_zval(params, stats);
-/*		zend_fcall_info_args(&RSYNC_G(stats_cb).fci, params TSRMLS_CC);
-
-		RSYNC_G(stats_cb).fci.retval_ptr_ptr = &retval_ptr;
-
-		if (zend_call_function(&RSYNC_G(stats_cb).fci, &RSYNC_G(stats_cb).fcc TSRMLS_CC) == SUCCESS
-				&& RSYNC_G(stats_cb).fci.retval_ptr_ptr &&
-		    *RSYNC_G(stats_cb).fci.retval_ptr_ptr) {
-
-		}*/
 
 		zend_fcall_info_argn(&RSYNC_G(stats_cb).fci TSRMLS_CC, 2, &RSYNC_G(ret), &RSYNC_G(stats));
 		zend_fcall_info_call(&RSYNC_G(stats_cb).fci, &RSYNC_G(stats_cb).fcc, &retval_ptr, params TSRMLS_CC);
@@ -194,8 +182,10 @@ void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
 	rsync_globals->has_log_cb = 0;
 	rsync_globals->has_stats_cb = 0;
 	rsync_globals->stats_cb.fci.function_name = NULL;
+	rsync_globals->log_cb.fci.function_name = NULL;
 #if PHP_VERSION_ID >= 50300
 	rsync_globals->stats_cb.fci.object_ptr = NULL;
+	rsync_globals->log_cb.fci.object_ptr = NULL;
 #endif
 }
 /* }}} */
@@ -452,25 +442,28 @@ PHP_FUNCTION(rsync_patch_file)
 /* {{{ proto rsync_set_log_callback(string|array callback) set logging callback*/
 PHP_FUNCTION(rsync_set_log_callback)
 {
-/*	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "f", &RSYNC_G(log_cb).fci,
-			                  &RSYNC_G(log_cb).fci_cache) == FAILURE) {
+	zend_fcall_info fci;
+	zend_fcall_info_cache fcc;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "f", &fci, &fcc) == FAILURE) {
 		RSYNC_G(has_log_cb) = 0;
 
 		return;
 	}
 
-	if (RSYNC_G(log_cb).fci_cache.function_handler->common.num_args != 2) {
-		RSYNC_G(has_log_cb) = 0;
-		php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
-				"Log callback has %d formal arguments, but must have 2",
-				RSYNC_G(log_cb).fci_cache.function_handler->common.num_args);
+	RSYNC_G(log_cb).fci = fci;
+	RSYNC_G(log_cb).fcc = fcc;
+	Z_ADDREF_P(RSYNC_G(log_cb).fci.function_name);
 
-		return;
+#if PHP_VERSION_ID >= 50300
+	if (RSYNC_G(log_cb).fci.object_ptr) {
+		Z_ADDREF_P(RSYNC_G(log_cb).fci.object_ptr);
 	}
+#endif
 
 	RSYNC_G(has_log_cb) = 1;
 
-	rs_trace_to(php_rsync_log);*/
+	rs_trace_to(php_rsync_log);
 }
 /* }}} */
 
@@ -518,15 +511,6 @@ PHP_FUNCTION(rsync_set_stats_callback)
 		RSYNC_G(has_stats_cb) = 0;
 		return;
 	}
-
-/*	if (RSYNC_G(stats_cb).fci_cache.function_handler->common.num_args != 2) {
-		RSYNC_G(has_stats_cb) = 0;
-		php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
-				"Stats callback has %d formal arguments, but must have 2",
-				RSYNC_G(stats_cb).fci_cache.function_handler->common.num_args);
-
-		return;
-	}*/
 
 	RSYNC_G(stats_cb).fci = fci;
 	RSYNC_G(stats_cb).fcc = fcc;
