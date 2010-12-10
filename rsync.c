@@ -162,6 +162,19 @@ void php_rsync_stats(TSRMLS_D)
 		array_init(stats);
 
 		add_assoc_string(stats, "op", RSYNC_G(stats).op, 1);
+		add_assoc_long(stats, "lit_cmds", RSYNC_G(stats).lit_cmds);
+		add_assoc_long(stats, "lit_bytes", RSYNC_G(stats).lit_bytes);
+		add_assoc_long(stats, "lit_cmdbytes", RSYNC_G(stats).lit_cmdbytes);
+		add_assoc_long(stats, "copy_cmds", RSYNC_G(stats).copy_cmds);
+		add_assoc_long(stats, "copy_bytes", RSYNC_G(stats).copy_bytes);
+		add_assoc_long(stats, "copy_cmdbytes", RSYNC_G(stats).copy_cmdbytes);
+		add_assoc_long(stats, "sig_cmds", RSYNC_G(stats).sig_cmds);
+		add_assoc_long(stats, "sig_bytes", RSYNC_G(stats).sig_bytes);
+		add_assoc_long(stats, "false_matches", RSYNC_G(stats).false_matches);
+		add_assoc_long(stats, "sig_blocks", RSYNC_G(stats).sig_blocks);
+		add_assoc_long(stats, "block_len", RSYNC_G(stats).block_len);
+		add_assoc_long(stats, "in_bytes", RSYNC_G(stats).in_bytes);
+		add_assoc_long(stats, "out_bytes", RSYNC_G(stats).out_bytes);
 
 		add_next_index_zval(params, stats);
 
