@@ -1,25 +1,23 @@
 /*
-  +----------------------------------------------------------------------+
-  | PHP Version 5                                                        |
-  +----------------------------------------------------------------------+
-  | Copyright (c) 1997-2008 The PHP Group                                |
-  +----------------------------------------------------------------------+
-  | This source file is subject to version 3.01 of the PHP license,      |
-  | that is bundled with this package in the file LICENSE, and is        |
-  | available through the world-wide-web at the following url:           |
-  | http://www.php.net/license/3_01.txt                                  |
-  | If you did not receive a copy of the PHP license and are unable to   |
-  | obtain it through the world-wide-web, please send a note to          |
-  | license@php.net so we can mail you a copy immediately.               |
-  +----------------------------------------------------------------------+
-  | Author:                                                              |
-  +----------------------------------------------------------------------+
+  +--------------------------------------------------------------------+
+  | PECL :: rsync                                                      |
+  +--------------------------------------------------------------------+
+  | Redistribution and use in source and binary forms, with or without |
+  | modification, are permitted provided that the conditions mentioned |
+  | in the accompanying LICENSE file are met.                          |
+  +--------------------------------------------------------------------+
+  | Copyright (c) 2010 Michele Catalano <michele@catalano.de>          |
+  |                    Anatoliy Belsky <ab@php.net>                    |
+  +--------------------------------------------------------------------+ 
 */
 
 /* $Id: header 252479 2008-02-07 19:39:50Z iliaa $ */
 
 #ifndef PHP_RSYNC_H
 #define PHP_RSYNC_H
+
+#define PHP_RSYNC_EXTNAME "rsync"
+#define PHP_RSYNC_EXTVER "0.1"
 
 extern zend_module_entry rsync_module_entry;
 #define phpext_rsync_ptr &rsync_module_entry
@@ -38,6 +36,7 @@ extern zend_module_entry rsync_module_entry;
 
 #define RSYNC_HAVE_PHP_53 ZEND_MODULE_API_NO >= 20071006
 
+
 PHP_MINIT_FUNCTION(rsync);
 PHP_MSHUTDOWN_FUNCTION(rsync);
 PHP_RINIT_FUNCTION(rsync);
@@ -47,9 +46,22 @@ PHP_MINFO_FUNCTION(rsync);
 PHP_FUNCTION(rsync_generate_signature);
 PHP_FUNCTION(rsync_generate_delta);
 PHP_FUNCTION(rsync_patch_file);
+PHP_FUNCTION(rsync_set_log_callback);
+PHP_FUNCTION(rsync_set_log_level);
+PHP_FUNCTION(rsync_error);
 
 ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	char *tmp_dir;
+	long block_length;
+	long strong_length;
+	rs_stats_t stats;
+	rs_result ret;
+	struct _log_callback {
+	    zend_fcall_info fci;
+		zend_fcall_info_cache fcc;
+	} log_cb;
+	int has_log_cb;
+	long log_stats;
 ZEND_END_MODULE_GLOBALS(rsync)
 
 #ifdef ZTS

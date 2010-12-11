@@ -37,4 +37,6 @@ tmp-php.ini
 .project
 .settings
 Debug
-
+librsync/doc/Doxyfile
+librsync/librsync-config.h
+librsync/stamp-h1
