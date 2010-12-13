@@ -30,6 +30,7 @@ ZEND_DECLARE_MODULE_GLOBALS(rsync)
 /* True global resources - no need for thread safety here */
 static int le_rsync;
 
+
 /* {{{ rsync_functions[]
  *
  * Every user visible function must have an entry in rsync_functions[].
@@ -120,6 +121,54 @@ php_rsync_file_open(zval **file, char *mode, char *name)
 }
 /* }}} */
 
+/* {{{ php_rsync_map_log_level */
+char *php_rsync_map_log_level(int level TSRMLS_DC)
+{
+	TSRMLS_FETCH();
+
+    switch (level)
+    {
+    	case RS_LOG_EMERG:
+    		RSYNC_G(error) = 1;
+    		return "EMERG";
+    		break;
+    	case RS_LOG_CRIT:
+    		RSYNC_G(error) = 1;
+    		return "CRIT";
+    		break;
+    	case RS_LOG_ERR:
+    		RSYNC_G(error) = 1;
+    		return "ERR";
+    		break;
+    	case RS_LOG_ALERT:
+    		RSYNC_G(error) = 0;
+    		return "ALERT";
+    		break;
+    	case RS_LOG_WARNING:
+    		RSYNC_G(error) = 0;
+    		return "WARNING";
+    		break;
+    	case RS_LOG_NOTICE:
+    		RSYNC_G(error) = 0;
+    		return "NOTICE";
+    		break;
+    	case RS_LOG_INFO:
+    		RSYNC_G(error) = 0;
+    		return "INFO";
+    		break;
+    	case RS_LOG_DEBUG:
+    		RSYNC_G(error) = 0;
+    		return "DEBUG";
+    		break;
+    	default:
+    		RSYNC_G(error) = 0;
+    		return "UNKNOWN";
+    		break;
+    }
+}
+/* }}} */
+
+
 /* {{{ php_rsync_log(int level, char *msg)
  * Function to registered for logging the messages from the librsync library.
  *
@@ -128,6 +177,21 @@ php_rsync_file_open(zval **file, char *mode, char *name)
 void php_rsync_log(int level, const char *msg)
 {
 	zval *params, *retval_ptr = NULL;
+	char *type;
+	char *message;
+	int pos, i, found = 0;
+
+	message = emalloc((strlen(msg)-pos+1)*sizeof(char));
+
+	for (i=0; i<strlen(msg); i++) {
+		if (msg[i] == ':' && !found) {
+			found = 1;
+			pos = i+2;
+			i = i+2;
+		}
+		if (found) message[i-pos] = msg[i];
+	}
+
 
 	TSRMLS_FETCH();
 
@@ -135,12 +199,15 @@ void php_rsync_log(int level, const char *msg)
 		MAKE_STD_ZVAL(params);
 		array_init_size(params, 2);
 		add_next_index_long(params, (long)level);
-		add_next_index_string(params, msg, 0);
+		add_next_index_string(params, message, 0);
 
-		zend_fcall_info_argn(&RSYNC_G(log_cb).fci TSRMLS_CC, 2, &level, &msg);
+		zend_fcall_info_argn(&RSYNC_G(log_cb).fci TSRMLS_CC, 2, &level, &message);
 		zend_fcall_info_call(&RSYNC_G(log_cb).fci, &RSYNC_G(log_cb).fcc, &retval_ptr, params TSRMLS_CC);
 
 		zend_fcall_info_args_clear(&RSYNC_G(log_cb).fci, 1);
+	} else {
+		type = php_rsync_map_log_level(level TSRMLS_CC);
+		php_error_docref(NULL TSRMLS_CC, E_NOTICE, "Rsync %s: %s", type, message);
 	}
 }
 /* }}} */
@@ -154,6 +221,7 @@ void php_rsync_log_stats(TSRMLS_D)
 }
 /* }}} */
 
+
 /* {{{ php_rsync_globals_ctor
  */
 void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
@@ -162,6 +230,7 @@ void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
 	rsync_globals->strong_length = RS_DEFAULT_STRONG_LEN;
 	rsync_globals->log_stats = 0;
 	rsync_globals->has_log_cb = 0;
+	rsync_globals->error = 0;
 	rsync_globals->log_cb.fci.function_name = NULL;
 #if PHP_VERSION_ID >= 50300
 	rsync_globals->log_cb.fci.object_ptr = NULL;
@@ -213,6 +282,9 @@ PHP_MINIT_FUNCTION(rsync)
 	REGISTER_LONG_CONSTANT("RSYNC_DEFAULT_BLOCK_LEN", RS_DEFAULT_BLOCK_LEN, CONST_CS | CONST_PERSISTENT);
 
 	REGISTER_INI_ENTRIES();
+
+	rs_trace_to(php_rsync_log);
+
 	return SUCCESS;
 }
 /* }}} */
@@ -443,8 +515,6 @@ PHP_FUNCTION(rsync_set_log_callback)
 #endif
 
 	RSYNC_G(has_log_cb) = 1;
-
-	rs_trace_to(php_rsync_log);
 }
 /* }}} */
 
@@ -452,7 +522,7 @@ PHP_FUNCTION(rsync_set_log_callback)
 /* {{{ proto rsync_set_log_callback(string|array callback) set logging callback */
 PHP_FUNCTION(rsync_set_log_level)
 {
-	long level = 0;
+	long level = RS_LOG_EMERG;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l", &level) == FAILURE) {
 		return;
@@ -473,7 +543,7 @@ PHP_FUNCTION(rsync_error)
 {
 	long result = -1;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "l|", &result) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|l", &result) == FAILURE) {
 		return;
 	}
 
