@@ -179,7 +179,8 @@ void php_rsync_log(int level, const char *msg)
 	zval *params, *retval_ptr = NULL;
 	char *type;
 	char *message;
-	int pos, i, found = 0;
+	unsigned int pos, i, found = 0;
+	TSRMLS_FETCH();
 
 
 	for (i=0; i<strlen(msg); i++) {
@@ -191,9 +192,6 @@ void php_rsync_log(int level, const char *msg)
 		}
 		if (found) message[i-pos] = msg[i];
 	}
-
-
-	TSRMLS_FETCH();
 
 	if (RSYNC_G(has_log_cb)) {
 		MAKE_STD_ZVAL(params);
