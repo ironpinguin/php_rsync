@@ -84,7 +84,7 @@ PHP_INI_END()
  * 
  */
 php_stream *
-php_rsync_file_open(zval **file, char *mode, char *name)
+php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
 {
 	zval 	*return_value;
 	php_stream 	*stream;
@@ -309,8 +309,8 @@ PHP_FUNCTION(rsync_generate_signature)
 	if (zend_parse_parameters(argc TSRMLS_CC, "ZZ", &file, &sigfile) == FAILURE)
 		return;
 	
-	infile_stream = php_rsync_file_open(file, "rb", file1);
-	sigfile_stream = php_rsync_file_open(sigfile, "wb", file2);
+	infile_stream = php_rsync_file_open(file, "rb", file1 TSRMLS_CC);
+	sigfile_stream = php_rsync_file_open(sigfile, "wb", file2 TSRMLS_CC);
 
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, REPORT_ERRORS);
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
@@ -346,7 +346,7 @@ PHP_FUNCTION(rsync_generate_delta)
 	if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &sigfile, &file, &deltafile, &deltafile_len) == FAILURE)
 		return;
 
-	sigfile_stream = php_rsync_file_open(sigfile, "rb", file1);
+	sigfile_stream = php_rsync_file_open(sigfile, "rb", file1 TSRMLS_CC);
 
 	php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
@@ -363,8 +363,8 @@ PHP_FUNCTION(rsync_generate_delta)
 		RETURN_LONG(RSYNC_G(ret));
 	}
 
-	infile_stream = php_rsync_file_open(file, "rb", file2);
-	deltafile_stream = php_rsync_file_open(deltafile, "wb", file3);
+	infile_stream = php_rsync_file_open(file, "rb", file2 TSRMLS_CC);
+	deltafile_stream = php_rsync_file_open(deltafile, "wb", file3 TSRMLS_CC);
 
 	php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, 1);
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta, 1);
@@ -400,9 +400,9 @@ PHP_FUNCTION(rsync_patch_file)
 	if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &file, &deltafile, &newfile) == FAILURE)
 		return;
 
-	basisfile_stream = php_rsync_file_open(file, "rb", file1);
-	deltafile_stream = php_rsync_file_open(deltafile, "rb", file2);
-	newfile_stream = php_rsync_file_open(newfile, "wb", file3);
+	basisfile_stream = php_rsync_file_open(file, "rb", file1 TSRMLS_CC);
+	deltafile_stream = php_rsync_file_open(deltafile, "rb", file2 TSRMLS_CC);
+	newfile_stream = php_rsync_file_open(newfile, "wb", file3 TSRMLS_CC);
 
 	php_stream_cast(basisfile_stream, PHP_STREAM_AS_STDIO, (void**)&basis_file, 1);
 	php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta_file, 1);
