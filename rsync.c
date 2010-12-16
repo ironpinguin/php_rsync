@@ -181,13 +181,13 @@ void php_rsync_log(int level, const char *msg)
 	char *message;
 	int pos, i, found = 0;
 
-	message = emalloc((strlen(msg)-pos+1)*sizeof(char));
 
 	for (i=0; i<strlen(msg); i++) {
 		if (msg[i] == ':' && !found) {
 			found = 1;
 			pos = i+2;
 			i = i+2;
+	                message = emalloc((strlen(msg)-pos+1)*sizeof(char));
 		}
 		if (found) message[i-pos] = msg[i];
 	}
