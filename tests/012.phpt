@@ -1,5 +1,5 @@
 --TEST--
-Test the stats logging over callback php function
+Test the logging stats over php error_log
 --SKIPIF--
 <?php 
 if (!extension_loaded("rsync")) print "skip"; ?>
@@ -8,13 +8,10 @@ if (!extension_loaded("rsync")) print "skip"; ?>
 $targetMD5 = 'e6048d9f1ed7367259270db93b43cf74';
 
 ini_set('rsync.log_stats', 1);
-function log_callback($level, $message) {
-    print "$level $message";
-};
-rsync_set_log_callback('log_callback');
 
 $ret = rsync_generate_signature('tests/002test.png','tests/002signatur.sig');  
 unlink('tests/002signatur.sig');
 ?>
 --EXPECT--
-6 signature statistics: signature[3 blocks, 2048 bytes per block]
+Notice: rsync_generate_signature(): Rsync INFO: signature statistics: signature[3 blocks, 2048 bytes per block]
+ in /mnt/hgfs/Dokumente/workspace/php_rsync/tests/012.php on line 6

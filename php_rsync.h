@@ -36,6 +36,7 @@ extern zend_module_entry rsync_module_entry;
 
 #define RSYNC_HAVE_PHP_53 ZEND_MODULE_API_NO >= 20071006
 
+#include <librsync.h>
 
 PHP_MINIT_FUNCTION(rsync);
 PHP_MSHUTDOWN_FUNCTION(rsync);
@@ -50,6 +51,8 @@ PHP_FUNCTION(rsync_set_log_callback);
 PHP_FUNCTION(rsync_set_log_level);
 PHP_FUNCTION(rsync_error);
 
+
+
 ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	char *tmp_dir;
 	long block_length;
@@ -60,6 +63,7 @@ ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	    zend_fcall_info fci;
 		zend_fcall_info_cache fcc;
 	} log_cb;
+	int error;
 	int has_log_cb;
 	long log_stats;
 ZEND_END_MODULE_GLOBALS(rsync)
