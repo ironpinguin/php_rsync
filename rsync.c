@@ -124,8 +124,6 @@ php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
 /* {{{ php_rsync_map_log_level */
 char *php_rsync_map_log_level(int level TSRMLS_DC)
 {
-	TSRMLS_FETCH();
-
     switch (level)
     {
     	case RS_LOG_EMERG:
