@@ -2,21 +2,35 @@
 /**
  * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ATTANTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  * This is a example for using the rsync extension
- * This example don't work with large directories and big files. 
- * There get alle changing content in the address space to send them over 
- * network, so if the data to transmit is to great to fit in the php max 
- * memory usage this client will be case an PHP error. 
- * 
- * Feel free to implement your own protocol using the librsync to generate 
+ * This example don't work with large directories and big files.
+ * There get alle changing content in the address space to send them over
+ * network, so if the data to transmit is to great to fit in the php max
+ * memory usage this client will be case an PHP error.
+ *
+ * Feel free to implement your own protocol using the librsync to generate
  * signatur files and patch files.
  *
- * This server can only used to get request from client of changes in the 
+ * This server can only used to get request from client of changes in the
  * directory on the server.
- * There generatt the patches of changed files, deleted files, new files and new 
- * directory. 
+ * There generatt the patches of changed files, deleted files, new files and new
+ * directory.
  */
 if (!extension_loaded("rsync")) {
-    echo "You need the rsync php extension loaded to use this!";
+    echo json_encode(array("ERROR" =>
+        "You need the rsync php extension loaded to use this!"));
+    exit;
+}
+require_once 'logger.php';
+
+// Init the logger class
+try {
+    $logger = logger::getInstance();
+    $logger->setLogfile("server.log");
+    // Register the log method as callback for the rsync extension.
+    rsync_set_log_callback(array(&$logger,"log"));
+} catch (Exception $e){
+    echo json_encode(array("ERROR" =>
+        "Can't init logger class! => ".$e->getMessage()));
     exit;
 }
 
@@ -31,41 +45,41 @@ $default = "testdir1";
 class rsyncServer
 {
     /**
-     * Basis Path at the rsync php extension Server 
-     * 
+     * Basis Path at the rsync php extension Server
+     *
      * @var string
      */
     public $basepath;
-    
+
     /**
      * Local directory path to sync
-     * 
-     * @var string 
+     *
+     * @var string
      */
     public $localpath;
-    
+
     /**
-     * Sync direction f for syncing changes from Client to Server and 
+     * Sync direction f for syncing changes from Client to Server and
      * b for syncing changes from Server to Client.
-     * 
+     *
      * @var string
      */
     public $direction = 'f';
-    
+
     /**
      * list of all entries and subentries of the local directory.
-     * 
+     *
      * @var array
      */
     public $structure = array();
-    
+
     public $result = array();
 
     /**
      * Constructor of the Client.
-     * 
+     *
      * @param string $localpath Local directory to sync
-     * @param string $direction Direction to sync 
+     * @param string $direction Direction to sync
      *                          f = server to client
      *                          b = client to server
      */
@@ -77,17 +91,17 @@ class rsyncServer
     }
 
     /**
-     * 
+     *
      * @param type $remoteStructure
-     * @param type $signatures 
+     * @param type $signatures
      */
     public function serverToClientSync($remoteStructure, $signatures)
     {
         foreach ($remoteStructure as $name => $data) {
             if (array_key_exists($name, $this->structure)) {
                 $patch = $this->createPatch($name, $signatures[$name]);
-                if (is_array($patch)) 
-                    return json_encode(array("ERROR" => 
+                if (is_array($patch))
+                    return json_encode(array("ERROR" =>
                         "Patchfile generation Error ".$patch['ERROR'].
                         ", File: $name"));
                 $this->result['changes'][$name] = $this->structure[$name];
@@ -105,7 +119,7 @@ class rsyncServer
                     $this->result['changes'][$name]['changetype'] = 'newDir';
                 } else {
                     $this->result['changes'][$name]['changetype'] = 'newFile';
-                    $this->result['changes'][$name]['content'] = 
+                    $this->result['changes'][$name]['content'] =
                             base64_encode(file_get_contents($this->localpath.
                                     DIRECTORY_SEPARATOR.$name));
                 }
@@ -113,22 +127,22 @@ class rsyncServer
         }
         return json_encode($this->result);
     }
-   
+
     /**
      *
      * @param type $name
      * @param type $signature
-     * @return type 
+     * @return type
      */
     public function createPatch($name, $signature) {
         $patchfile = tempnam(sys_get_temp_dir(), 'patch');
         $sighandle = fopen('data://text/plain;base64,'.
                 $signature, 'rb');
-        $ret = rsync_generate_delta($sighandle, 
+        $ret = rsync_generate_delta($sighandle,
                 $this->localpath.DIRECTORY_SEPARATOR.$name, $patchfile);
         fclose($sighandle);
         if ($ret != RSYNC_DONE) {
-            return array("ERROR" => $ret);
+            return array("ERROR" => $ret, "ERROR_TEXT" => rsync_error($ret));
         }
         $patch = base64_encode(file_get_contents($patchfile));
         unlink($patchfile);
@@ -141,7 +155,7 @@ class rsyncServer
      * This Method is working recursive to step deeper in the directory.
      *
      * @param string $dir    Aktual working directory
-     * @param string $prefix Prefix to make relative path to the initial 
+     * @param string $prefix Prefix to make relative path to the initial
      *                       directory
      */
     public function getLocalStructur($dir, $prefix = '')
@@ -163,7 +177,7 @@ class rsyncServer
                     'mtime' => $stats['mtime'], 'uid' => $stats['uid'],
                     'gid' => $stats['gid']);
                 if ($type == 'dir') {
-                    $this->getLocalStructur($dir.'/'.$dentry, 
+                    $this->getLocalStructur($dir.'/'.$dentry,
                             $prefix.'/'.$dentry);
                 }
             }
@@ -173,7 +187,7 @@ class rsyncServer
 
 // check if the Request Parameter step is given
 if (!isset($_REQUEST['step'])) {
-    echo json_encode(array("ERROR" => 
+    echo json_encode(array("ERROR" =>
         "No step parameter is given in the request."));
     exit;
 }
@@ -218,7 +232,7 @@ if ($direction == 'f') {
     $signatures = json_decode($_REQUEST['signatures'], true);
 } else {
     // @TODO Client to Server sync is not implemented.
-    echo json_encode(array("ERROR" => 
+    echo json_encode(array("ERROR" =>
         "Direction from client to server is not implemented."));
     exit;
 }
@@ -227,13 +241,13 @@ if ($direction == 'f') {
 try {
     $server = new rsyncServer($localpath, $direction);
 } catch (Exception $e) {
-    echo json_encode(array("ERROR" => 
+    echo json_encode(array("ERROR" =>
         "Rsync server failed with code ".$e->getCode().
         " and message: ".$e->getMessage()));
     exit;
 }
 
-// Switch between the diffrent Steps of Syncing 
+// Switch between the diffrent Steps of Syncing
 // (Server to Client sync has only one step).
 switch ($_REQUEST['step']) {
     case '1':
