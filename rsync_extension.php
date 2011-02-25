@@ -106,7 +106,9 @@ define("RSYNC_DEFAULT_STRONG_LEN", 8);
 define("RSYNC_DEFAULT_BLOCK_LEN", 2048);
 
 /**
- * Funtion to generate the signaturfile from a /**
+ * Funtion to generate the signaturfile from the given file.
+ * the signaturfile and file can be an string with the relative or absult path to the file
+ * on the system or a open php stream.
  *
  * @param php_stream|string $file         Here give the filepath or a stream for the file to read.
  * @param php_stream|string $signaturfile Here give the filepath or a stream for the file to store.
@@ -114,20 +116,22 @@ define("RSYNC_DEFAULT_BLOCK_LEN", 2048);
 function rsync_generate_signature($file, $signaturfile) {}
 
 /**
- * Function to patch a file with the given delta patch
+ * Function to patch a file with the given delta patch.
+ * the file, patchfile and newfile can be a string or a open php stream
  *
- * @param php_stream|string $file
- * @param php_stream|string $patch
- * @param php_stream|string $newfile
+ *
+ * @param php_stream|string $file    String with the filepath or a open read php stream.
+ * @param php_stream|string $patch   String with the filepath or a open read php stream.
+ * @param php_stream|string $newfile String with the filepath or a open write php stream.
  */
 function rsync_patch_file($file, $patch, $newfile) {}
 
 /**
  * Function to generate a patch file from the given signaturfile and the local file.
  *
- * @param php_stream|string $signaturfile
- * @param php_stream|string $file
- * @param php_stream|string $patchfile
+ * @param php_stream|string $signaturfile String with the filepath or a open read php stream.
+ * @param php_stream|string $file         String with the filepath or a open read php stream.
+ * @param php_stream|string $patchfile    String with the filepath or a open write php stream.
  */
 function rsync_generate_delta($signaturfile, $file, $patchfile) {}
 
