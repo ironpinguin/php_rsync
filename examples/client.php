@@ -2,24 +2,27 @@
 /**
  * !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!ATTANTION!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
  * This is a example for using the rsync extension
- * This example don't work with large directories and big files. 
- * There get alle changing content in the address space to send them over 
- * network, so if the data to transmit is to great to fit in the php max 
- * memory usage this client will be case an PHP error. 
- * 
- * Feel free to implement your own protocol using the librsync to generate 
+ * This example don't work with large directories and big files.
+ * There get alle changing content in the address space to send them over
+ * network, so if the data to transmit is to great to fit in the php max
+ * memory usage this client will be case an PHP error.
+ *
+ * Feel free to implement your own protocol using the librsync to generate
  * signatur files and patch files.
  *
- * This client can only used to get changes from server and patch you local 
+ * This client can only used to get changes from server and patch you local
  * directory with it.
- * There get the patches of changed files, deleted files, new files and new 
- * directory. 
+ * There get the patches of changed files, deleted files, new files and new
+ * directory.
  * (only the mode will be prevent an no user or group changes will be made)
  */
 if (!extension_loaded("rsync")) {
     echo "You need the rsync php extension loaded to use this!";
     exit;
 }
+// Load the Logging class to log all messages from the extension in a logging file
+// over callback registration
+require_once "logger.php";
 
 /**
  * The rsync example Client Class
@@ -28,67 +31,67 @@ class rsyncClient
 {
     /**
      * Target Url of the rsync php extension Server
-     * 
-     * @var string 
+     *
+     * @var string
      */
     public $targetUrl;
     /**
-     * Basis Path at the rsync php extension Server 
-     * 
+     * Basis Path at the rsync php extension Server
+     *
      * @var string
      */
     public $basepath;
-    
+
     /**
      * Local directory path to sync
-     * 
-     * @var string 
+     *
+     * @var string
      */
     public $localpath;
-    
+
     /**
-     * Sync direction 
+     * Sync direction
      *  f  for syncing changes from Server to Client.
      *  b  for syncing changes from Client to Server.
-     * 
+     *
      * @var string
      */
     public $direction = 'f';
-    
+
     /**
      * list of all entries and subentries of the local directory.
-     * 
+     *
      * @var array
      */
     public $strukture = array();
 
     /**
      * The start and end of the message blocks.
-     * 
+     *
      * @var array
      */
-    public $msgblock = array('ERR' => 
-                            array('start' => '<h1 style="color:red;">', 
+    public $msgblock = array('ERR' =>
+                            array('start' => '<h1 style="color:red;">',
                                     'end' => '</h1>'),
-                             'ALT' => 
-                            array('start' => '<h2 style="color:blue;">', 
+                             'ALT' =>
+                            array('start' => '<h2 style="color:blue;">',
                                     'end' => '</h2>'),
-                             'MSG' => 
+                             'MSG' =>
                             array('start' => '<p>', 'end' => '</p>')
                        );
-    
+
     /**
      * Constructor of the Client.
-     * 
+     *
      * @param string $targetUrl Url of the Server
      * @param string $localpath Local directory to sync
-     * @param string $direction Direction to sync 
+     * @param string $direction Direction to sync
      *                          f = client to server
      *                          b = server to client
-     * @param string $basepath  Remote base directory to sync if null the 
+     * @param string $basepath  Remote base directory to sync if null the
      *                          default will be used at the server
      */
-    public function __construct($targetUrl, $localpath, $sapi_type, $direction = 'f', 
+    public function __construct($targetUrl, $localpath, $sapi_type, $direction = 'f',
          $basepath = null)
     {
         // Define the defailt MessageBlock to make output message in the webbrowser.
@@ -123,14 +126,14 @@ class rsyncClient
             throw new Exception("No valid Direction given: '$direction'", 3);
         }
         $this->direction = $direction;
-        
+
         // Set Basepath if given.
         if ($basepath !== null) $this->basepath = $basepath;
     }
-    
+
     /**
      * Print a message out.
-     * 
+     *
      * @param string $message The message to print out
      * @param string $type    The type of message:
      *                         'MSG' = Normal message
@@ -158,16 +161,16 @@ class rsyncClient
         $postdata['filelist'] = json_encode($this->structure);
         $postdata['direction'] = $this->direction;
         if (!empty($this->basepath)) $postdata['basepath'] = $this->basepath;
-        
+
         if ($this->direction == 'f') {
             $postdata['step'] = 1;
             $this->serverToClient($curl, $postdata);
         } else {
             // @TODO Implement the sync from client to server.
         }
-        
+
     }
-    
+
     /**
      *  Step by sync files from Server to Client
      *
@@ -177,15 +180,18 @@ class rsyncClient
         $signaturFiles = array();
         foreach($this->structure as $file => $data) {
             if ($data['type'] != 'dir') {
+                // Open a file stream to the existing file and a temporary
+                // file for the returning signatur file.
                 $fin = fopen($this->localpath.'/'.$file, 'rb');
                 $tmpname = tempnam(sys_get_temp_dir(), 'sign');
                 $fsig = fopen($tmpname, 'wb');
+                // Generate the signatur file
                 $ret = rsync_generate_signature($fin, $fsig);
                 fclose($fin);
                 fclose($fsig);
                 if ($ret != RSYNC_DONE) {
                     throw new Exception("Signatur generating Failed with ".
-                            $ret."!", $ret);
+                            $ret."! => ".rsync_error($ret), $ret);
                 }
                 $signaturFiles[$file] = base64_encode(file_get_contents($tmpname));
                 unlink($tmpname);
@@ -195,7 +201,7 @@ class rsyncClient
         curl_setopt($curl, CURLOPT_POSTFIELDS, $postdata);
         $this->msg("Send Data to Server");
         $response = $this->sendCurlRequest($curl);
-        
+
         if (!array_key_exists('changes', $response)) {
             $this->msg("ERROR from Server", "ERR");
             if (isset($response['ERROR'])) {
@@ -240,13 +246,13 @@ class rsyncClient
         $requestResponse = curl_exec($curl);
         if ($requestResponse === FALSE) {
             $this->msg("Curl Request Errror: ".curl_error($curl), "ERR");
-            throw new Exception("Curl Request Error: ".curl_error($curl), 
+            throw new Exception("Curl Request Error: ".curl_error($curl),
                     curl_errno($curl));
         }
         $response = json_decode($requestResponse, true);
         if ($response === NULL) {
             $this->msg("Response from Server is not understandable","ERR");
-            throw new Exception("Response from Server is not understandable", 
+            throw new Exception("Response from Server is not understandable",
                     10);
         }
         if (key_exists("ERROR", $response)) {
@@ -268,7 +274,7 @@ class rsyncClient
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
         return $curl;
     }
-    
+
     /**
      * Create a new Directory
      *
@@ -281,17 +287,17 @@ class rsyncClient
         mkdir($this->localpath.DIRECTORY_SEPARATOR.$filename);
         chmod($this->localpath.DIRECTORY_SEPARATOR.$filename, $data['rights']);
     }
-    
+
     /**
      * Create a new File
-     * 
+     *
      * @param string $filename
      * @param array  $data
      */
     public function createFile($filename, $data)
     {
         $this->msg("Create file $filename");
-        file_put_contents($this->localpath.$filename, 
+        file_put_contents($this->localpath.$filename,
                 base64_decode($data['content']));
         chmod($this->localpath.$filename, $data['rights']);
     }
@@ -308,15 +314,16 @@ class rsyncClient
         $this->msg("Patch existing file $filename");
         $patchFile = tempnam(sys_get_temp_dir(), 'patch_');
         file_put_contents($patchFile, base64_decode($data['patch']));
-        $ret = rsync_patch_file($this->localpath.$filename, 
-                $patchFile, 
+        $ret = rsync_patch_file($this->localpath.$filename,
+                $patchFile,
                 $this->localpath.$filename.'-new');
         if ($ret != RSYNC_DONE) {
-            throw new Exception("Can not patch file ".$filename.".", $ret);
+            throw new Exception("Can not patch file ".$filename.". Message: ".
+                rsync_error($ret), $ret);
         }
         unlink($patchFile);
         unlink($this->localpath.DIRECTORY_SEPARATOR.$filename);
-        rename($this->localpath.DIRECTORY_SEPARATOR.$filename.'-new', 
+        rename($this->localpath.DIRECTORY_SEPARATOR.$filename.'-new',
                 $this->localpath.DIRECTORY_SEPARATOR.$filename);
         chmod($this->localpath.$filename, $data['rights']);
     }
@@ -326,7 +333,7 @@ class rsyncClient
      * This Method is working recursive to step deeper in the directory.
      *
      * @param string $dir    Aktual working directory
-     * @param string $prefix Prefix to make relative path to the initial 
+     * @param string $prefix Prefix to make relative path to the initial
      *                       directory
      */
     public function getLocalStructur($dir, $prefix = '')
@@ -347,7 +354,7 @@ class rsyncClient
                     'mtime' => $stats['mtime'], 'uid' => $stats['uid'],
                     'gid' => $stats['gid']);
                 if ($type == 'dir') {
-                    $this->getLocalStructur($dir.'/'.$dentry, 
+                    $this->getLocalStructur($dir.'/'.$dentry,
                             $prefix.'/'.$dentry);
                 }
             }
@@ -356,9 +363,9 @@ class rsyncClient
 
     /**
      * Check if the given url is valid
-     * 
+     *
      * @param string $url The url to check
-     * @return bool 
+     * @return bool
      */
     private function isValidURL($url)
     {
@@ -369,7 +376,7 @@ class rsyncClient
 
     /**
      * Print the usage to the console.
-     * 
+     *
      */
     public static function usage($sapi_type)
     {
@@ -406,39 +413,39 @@ class rsyncClient
 }
 
 /**
- * This is the part to get commandline parameters and init the rsyncClient 
+ * This is the part to get commandline parameters and init the rsyncClient
  * Class to sync with server.
  */
 
 /**
  * Target Url get from given parameters
- * 
+ *
  * @var string
  */
 $targetUrl = '';
 /**
  * Base directory on server to sync
- * 
+ *
  * @var string/null
  */
 $base = null;
 /**
  * Local directory to sync with server
- * 
+ *
  * @var string
  */
 $local = '';
 /**
- * Direction to sync. 
+ * Direction to sync.
  *     f => from server to client
  *     b => from client to server (not implemented)
- * 
+ *
  * @var string
  */
 $direction = 'f';
 /**
  * Get string cli for sapi.
- * 
+ *
  * @var string
  */
 $sapi_type = substr(php_sapi_name(), 0, 3);
@@ -448,7 +455,7 @@ if ($sapi_type == 'cli') {
         rsyncClient::usage($sapi_type);
         exit(1);
     }
-    
+
     for ($i=1; $i > $argc; $i=$i+2) {
         switch ($_SERVER['argv'][$i]) {
             case '-t':
@@ -479,14 +486,26 @@ if ($sapi_type == 'cli') {
     if (isset($_REQUEST['base'])) $base = $_REQUEST['base'];
     if (isset($_REQUEST['local'])) $local = $_REQUEST['local'];
     if (isset($_REQUEST['dir'])) $direction = $_REQUEST['dir'];
-    if (empty($targetUrl) || empty($local) || 
-         ($direction != 'f' && $direction != 'b') || 
+    if (empty($targetUrl) || empty($local) ||
+         ($direction != 'f' && $direction != 'b') ||
          (empty($base) && !is_null($base))) {
         echo '<h1 style="color:red;">The given parameters are wrong!</h1>';
         rsyncClient::usage($sapi_type);
         exit(4);
     }
 }
+
+// Init the logger class
+try {
+    $logger = logger::getInstance();
+    $logger->setLogfile("client.log");
+    // Register the log method as callback for the rsync extension.
+    rsync_set_log_callback(array(&$logger,"log"));
+} catch (Exception $e){
+    echo "Can't init logger class!\n".$e->getMessage()."\n";
+    exit(5);
+}
+
 $rClient = new rsyncClient($targetUrl, $local, $sapi_type, $direction, $base);
 
 $rClient->sync();
