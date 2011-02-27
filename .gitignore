@@ -27,11 +27,11 @@ mkinstalldirs
 modules/
 *.la
 run-tests.php
-tests/001.diff
-tests/001.exp
-tests/001.log
-tests/001.out
-tests/001.php
+tests/*.diff
+tests/*.exp
+tests/*.log
+tests/*.out
+tests/*.php
 tmp-php.ini
 .cproject
 .project
