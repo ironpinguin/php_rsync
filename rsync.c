@@ -201,7 +201,7 @@ php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
     	zend_throw_exception_ex(
     		RsyncInvalidArgumentException_ce,
     		0 TSRMLS_CC,
-    		"\"%s\" must be of type string or stream",
+    		"\"%s\" must be of the type string or stream",
     		name
     	);
     }
@@ -494,6 +494,7 @@ PHP_FUNCTION(rsync_generate_signature)
     }
     sigfile_stream = php_rsync_file_open(sigfile, "wb", file2 TSRMLS_CC);
     if (NULL == sigfile_stream) {
+    	php_stream_close(infile_stream);
     	return;
     }
 
@@ -553,10 +554,13 @@ PHP_FUNCTION(rsync_generate_delta)
 
     infile_stream = php_rsync_file_open(file, "rb", file2 TSRMLS_CC);
     if (NULL == infile_stream) {
+    	php_stream_close(sigfile_stream);
     	return;
     }
     deltafile_stream = php_rsync_file_open(deltafile, "wb", file3 TSRMLS_CC);
     if (NULL == deltafile_stream) {
+    	php_stream_close(infile_stream);
+    	php_stream_close(sigfile_stream);
     	return;
     }
 
@@ -600,10 +604,13 @@ PHP_FUNCTION(rsync_patch_file)
     }
     deltafile_stream = php_rsync_file_open(deltafile, "rb", file2 TSRMLS_CC);
     if (NULL == deltafile_stream) {
+    	php_stream_close(basisfile_stream);
     	return;
     }
     newfile_stream = php_rsync_file_open(newfile, "wb", file3 TSRMLS_CC);
     if (NULL == newfile_stream) {
+    	php_stream_close(basisfile_stream);
+    	php_stream_close(deltafile_stream);
     	return;
     }
 
