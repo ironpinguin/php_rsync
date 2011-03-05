@@ -114,6 +114,9 @@ const zend_function_entry rsync_functions[] = {
 };
 /* }}} */
 
+zend_class_entry *RsyncException_ce, *RsyncStreamNotCastableException_ce,
+				*RsyncFileIoException_ce, *RsyncInvalidArgumentException_ce;
+
 /* {{{rsync_module_entry
  */
 zend_module_entry rsync_module_entry = {
@@ -165,8 +168,12 @@ php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
     if (Z_TYPE_PP(file) == IS_RESOURCE) {
         php_stream_from_zval(stream, file);
         if (FAILURE == php_stream_can_cast(stream, PHP_STREAM_AS_STDIO)) {
-            php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
-                "Error using stream for \"%s\". Is not castable!", name);
+        	zend_throw_exception_ex(
+				RsyncStreamNotCastableException_ce,
+				0 TSRMLS_CC,
+				"The stream for \"%s\" is not castable",
+				name
+        	);
         }
     } else if (Z_TYPE_PP(file) == IS_STRING) {
         string = Z_STRVAL_PP(file);
@@ -176,12 +183,22 @@ php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
         stream = php_stream_open_wrapper(string, mode, options, NULL);
 
         if (!stream) {
-            php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
-                "Error opening \"%s\" for %s: %s", name,
-                    is_write ? "write" : "read", strerror(errno));
+        	zend_throw_exception_ex(
+        		RsyncFileIoException_ce,
+        		0 TSRMLS_CC,
+        		"Could not open \"%s\" for %s: %s",
+        		name,
+        		(is_write ? "write" : "read"),
+        		strerror(errno)
+        	);
         }
     } else {
-        php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR, "Error \"%s\"is not a Stream or String", name);
+    	zend_throw_exception_ex(
+    		RsyncInvalidArgumentException_ce,
+    		0 TSRMLS_CC,
+    		"\"%s\" must be of type string or stream",
+    		name
+    	);
     }
 
     return stream;
@@ -316,6 +333,29 @@ void php_rsync_globals_dtor(zend_rsync_globals  *rsync_globals TSRMLS_DC)
 PHP_MINIT_FUNCTION(rsync)
 {
     ZEND_INIT_MODULE_GLOBALS(rsync, php_rsync_globals_ctor, php_rsync_globals_dtor);
+
+    zend_class_entry ce, *default_exception_ce;
+
+    default_exception_ce = zend_exception_get_default(TSRMLS_C);
+    INIT_CLASS_ENTRY(ce, "RsyncException", NULL);
+    RsyncException_ce = zend_register_internal_class_ex(
+    	&ce, default_exception_ce, "exception" TSRMLS_CC
+    );
+
+    INIT_CLASS_ENTRY(ce, "RsyncStreamNotCastableException", NULL);
+    RsyncStreamNotCastableException_ce = zend_register_internal_class_ex(
+    	&ce, RsyncException_ce, "rsyncexception" TSRMLS_CC
+    );
+
+    INIT_CLASS_ENTRY(ce, "RsyncFileIoException", NULL);
+    RsyncFileIoException_ce = zend_register_internal_class_ex(
+    	&ce, RsyncException_ce, "rsyncexception" TSRMLS_CC
+    );
+
+    INIT_CLASS_ENTRY(ce, "RsyncInvalidArgumentException", NULL);
+    RsyncInvalidArgumentException_ce = zend_register_internal_class_ex(
+    	&ce, RsyncException_ce, "rsyncexception" TSRMLS_CC
+    );
 
     REGISTER_LONG_CONSTANT("RSYNC_DONE", RS_DONE, CONST_CS | CONST_PERSISTENT);
     REGISTER_LONG_CONSTANT("RSYNC_BLOCKED", RS_BLOCKED, CONST_CS | CONST_PERSISTENT);
@@ -592,8 +632,11 @@ PHP_FUNCTION(rsync_set_log_level)
     }
 
     if (level < RS_LOG_EMERG || level > RS_LOG_DEBUG) {
-        php_error_docref(NULL TSRMLS_CC, E_RECOVERABLE_ERROR,
-                "Invalid log level value");
+    	zend_throw_exception(
+    		RsyncInvalidArgumentException_ce,
+    		"Invalid log level value",
+    		0 TSRMLS_CC
+    	);
         return;
     }
 
