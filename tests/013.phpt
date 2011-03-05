@@ -63,6 +63,9 @@ try {
     $out[] = $e->getMessage();
 }
 
+unlink("." . DIRECTORY_SEPARATOR . "tests" . DIRECTORY_SEPARATOR . "no sense");
+unlink("." . DIRECTORY_SEPARATOR . "tests" . DIRECTORY_SEPARATOR . "not exists");
+
 print implode("\n", $out) . "\n";
 ?>
 --EXPECTF--
