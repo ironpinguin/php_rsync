@@ -114,8 +114,10 @@ const zend_function_entry rsync_functions[] = {
 };
 /* }}} */
 
-zend_class_entry *RsyncException_ce, *RsyncStreamNotCastableException_ce,
-				*RsyncFileIoException_ce, *RsyncInvalidArgumentException_ce;
+static zend_class_entry *RsyncException_ce;
+static zend_class_entry *RsyncStreamNotCastableException_ce;
+static zend_class_entry *RsyncFileIoException_ce;
+static zend_class_entry *RsyncInvalidArgumentException_ce;
 
 /* {{{rsync_module_entry
  */
@@ -158,8 +160,8 @@ PHP_INI_END()
 php_stream *
 php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
 {
-    zval        *return_value;
-    php_stream  *stream;
+	zval        *return_value;
+    php_stream  *stream = NULL;
     int         is_write;
     char        *string;
     int         strlen;
@@ -182,12 +184,12 @@ php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
 
         stream = php_stream_open_wrapper(string, mode, options, NULL);
 
-        if (!stream) {
+        if (NULL == stream) {
         	zend_throw_exception_ex(
         		RsyncFileIoException_ce,
         		0 TSRMLS_CC,
         		"Could not open \"%s\" for %s: %s",
-        		name,
+        		string,
         		(is_write ? "write" : "read"),
         		strerror(errno)
         	);
@@ -334,27 +336,26 @@ PHP_MINIT_FUNCTION(rsync)
 {
     ZEND_INIT_MODULE_GLOBALS(rsync, php_rsync_globals_ctor, php_rsync_globals_dtor);
 
-    zend_class_entry ce, *default_exception_ce;
+    zend_class_entry ce;
 
-    default_exception_ce = zend_exception_get_default(TSRMLS_C);
     INIT_CLASS_ENTRY(ce, "RsyncException", NULL);
     RsyncException_ce = zend_register_internal_class_ex(
-    	&ce, default_exception_ce, "exception" TSRMLS_CC
+    	&ce, NULL, "exception" TSRMLS_CC
     );
 
     INIT_CLASS_ENTRY(ce, "RsyncStreamNotCastableException", NULL);
     RsyncStreamNotCastableException_ce = zend_register_internal_class_ex(
-    	&ce, RsyncException_ce, "rsyncexception" TSRMLS_CC
+    	&ce, RsyncException_ce, NULL TSRMLS_CC
     );
 
     INIT_CLASS_ENTRY(ce, "RsyncFileIoException", NULL);
     RsyncFileIoException_ce = zend_register_internal_class_ex(
-    	&ce, RsyncException_ce, "rsyncexception" TSRMLS_CC
+    	&ce, RsyncException_ce, NULL TSRMLS_CC
     );
 
     INIT_CLASS_ENTRY(ce, "RsyncInvalidArgumentException", NULL);
     RsyncInvalidArgumentException_ce = zend_register_internal_class_ex(
-    	&ce, RsyncException_ce, "rsyncexception" TSRMLS_CC
+    	&ce, RsyncException_ce, NULL TSRMLS_CC
     );
 
     REGISTER_LONG_CONSTANT("RSYNC_DONE", RS_DONE, CONST_CS | CONST_PERSISTENT);
@@ -474,7 +475,7 @@ PHP_FUNCTION(rsync_generate_signature)
     zval **file = NULL;
     zval **sigfile = NULL;
     char *file1 = "file";
-    char *file2 = "signatur file";    
+    char *file2 = "signature file";
     int argc = ZEND_NUM_ARGS();
     int file_len;
     int sigfile_len;
@@ -485,7 +486,13 @@ PHP_FUNCTION(rsync_generate_signature)
         return;
     
     infile_stream = php_rsync_file_open(file, "rb", file1 TSRMLS_CC);
+    if (NULL == infile_stream) {
+    	return;
+    }
     sigfile_stream = php_rsync_file_open(sigfile, "wb", file2 TSRMLS_CC);
+    if (NULL == sigfile_stream) {
+    	return;
+    }
 
     php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, REPORT_ERRORS);
     php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
@@ -507,7 +514,7 @@ PHP_FUNCTION(rsync_generate_delta)
     zval **sigfile = NULL;
     zval **file = NULL;
     zval **deltafile = NULL;
-    char *file1 = "signatur file";
+    char *file1 = "signature file";
     char *file2 = "file";
     char *file3 = "delta file";
     int argc = ZEND_NUM_ARGS();
@@ -522,6 +529,9 @@ PHP_FUNCTION(rsync_generate_delta)
         return;
 
     sigfile_stream = php_rsync_file_open(sigfile, "rb", file1 TSRMLS_CC);
+    if (NULL == sigfile_stream) {
+    	return;
+    }
 
     php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
 
@@ -539,7 +549,13 @@ PHP_FUNCTION(rsync_generate_delta)
     }
 
     infile_stream = php_rsync_file_open(file, "rb", file2 TSRMLS_CC);
+    if (NULL == infile_stream) {
+    	return;
+    }
     deltafile_stream = php_rsync_file_open(deltafile, "wb", file3 TSRMLS_CC);
+    if (NULL == deltafile_stream) {
+    	return;
+    }
 
     php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, 1);
     php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta, 1);
@@ -576,8 +592,17 @@ PHP_FUNCTION(rsync_patch_file)
         return;
 
     basisfile_stream = php_rsync_file_open(file, "rb", file1 TSRMLS_CC);
+    if (NULL == basisfile_stream) {
+    	return;
+    }
     deltafile_stream = php_rsync_file_open(deltafile, "rb", file2 TSRMLS_CC);
+    if (NULL == deltafile_stream) {
+    	return;
+    }
     newfile_stream = php_rsync_file_open(newfile, "wb", file3 TSRMLS_CC);
+    if (NULL == newfile_stream) {
+    	return;
+    }
 
     php_stream_cast(basisfile_stream, PHP_STREAM_AS_STDIO, (void**)&basis_file, 1);
     php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta_file, 1);
