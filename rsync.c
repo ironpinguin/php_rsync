@@ -195,6 +195,7 @@ php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
         	);
         }
     } else {
+    	/* TODO dump the given value */
     	zend_throw_exception_ex(
     		RsyncInvalidArgumentException_ce,
     		0 TSRMLS_CC,
