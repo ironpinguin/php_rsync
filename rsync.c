@@ -265,26 +265,17 @@ void php_rsync_log(int level, const char *msg)
 {
     zval            *params, *retval_ptr = NULL;
     char            *type;
-    char            *message;
-    unsigned int    pos, i, found = 0;
+    char            *message = NULL;
     TSRMLS_FETCH();
 
-
-    for (i=0; i<strlen(msg); i++) {
-        if (msg[i] == ':' && !found) {
-            found = 1;
-            pos = i+2;
-            i = i+2;
-            message = emalloc((strlen(msg)-pos+1)*sizeof(char));
-        }
-        if (found) message[i-pos] = msg[i];
-    }
+    message = strchr(msg, ':');
+    message += 2;
 
     if (RSYNC_G(has_log_cb)) {
         MAKE_STD_ZVAL(params);
         array_init_size(params, 2);
         add_next_index_long(params, (long)level);
-        add_next_index_string(params, message, 0);
+        add_next_index_string(params, message, 1);
 
         zend_fcall_info_argn(&RSYNC_G(log_cb).fci TSRMLS_CC, 2, &level, &message);
         zend_fcall_info_call(&RSYNC_G(log_cb).fci, &RSYNC_G(log_cb).fcc, &retval_ptr, params TSRMLS_CC);
