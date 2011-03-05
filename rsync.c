@@ -114,6 +114,8 @@ const zend_function_entry rsync_functions[] = {
 };
 /* }}} */
 
+/* Rsync exceptions
+ */
 static zend_class_entry *RsyncException_ce;
 static zend_class_entry *RsyncStreamNotCastableException_ce;
 static zend_class_entry *RsyncFileIoException_ce;
