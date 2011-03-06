@@ -302,14 +302,14 @@ void php_rsync_log_stats(TSRMLS_D)
  */
 void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
 {
-    rsync_globals->block_length = RS_DEFAULT_BLOCK_LEN;
-    rsync_globals->strong_length = RS_DEFAULT_STRONG_LEN;
-    rsync_globals->log_stats = 0;
-    rsync_globals->has_log_cb = 0;
-    rsync_globals->error = 0;
-    rsync_globals->log_cb.fci.function_name = NULL;
+    RSYNC_G(block_length) = RS_DEFAULT_BLOCK_LEN;
+    RSYNC_G(strong_length) = RS_DEFAULT_STRONG_LEN;
+    RSYNC_G(log_stats) = 0;
+    RSYNC_G(has_log_cb) = 0;
+    RSYNC_G(error) = 0;
+    RSYNC_G(log_cb).fci.function_name = NULL;
 #if PHP_VERSION_ID >= 50300
-    rsync_globals->log_cb.fci.object_ptr = NULL;
+    RSYNC_G(log_cb).fci.object_ptr = NULL;
 #endif
 }
 /* }}} */
@@ -318,8 +318,18 @@ void php_rsync_globals_ctor(zend_rsync_globals *rsync_globals TSRMLS_DC)
  */
 void php_rsync_globals_dtor(zend_rsync_globals  *rsync_globals TSRMLS_DC)
 {
-    if (rsync_globals->has_log_cb) {
-        efree(&rsync_globals->log_cb);
+    if (RSYNC_G(has_log_cb)) {
+    	if (RSYNC_G(log_cb).fci.function_name) {
+    		efree(&RSYNC_G(log_cb).fci.function_name);
+    		RSYNC_G(log_cb).fci.function_name = NULL;
+    	}
+
+#if PHP_VERSION_ID >= 50300
+		if (RSYNC_G(log_cb).fci.object_ptr) {
+			zval_ptr_dtor(&RSYNC_G(log_cb).fci.object_ptr);
+			RSYNC_G(log_cb).fci.object_ptr = NULL;
+		}
+#endif
     }
 }
 /* }}} */
