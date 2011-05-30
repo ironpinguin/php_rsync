@@ -24,7 +24,7 @@ require_once 'logger.php';
 
 // Init the logger class
 try {
-    $logger = logger::getInstance();
+    $logger = rsnycLogger::getInstance();
     $logger->setLogfile("server.log");
     // Register the log method as callback for the rsync extension.
     rsync_set_log_callback(array(&$logger,"log"));

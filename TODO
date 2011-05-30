@@ -1,0 +1,1 @@
+- Reverte Enginiering the rsync to update the librsync library without change the license from lgpl to gpl.

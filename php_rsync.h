@@ -36,7 +36,7 @@ extern zend_module_entry rsync_module_entry;
 
 #define RSYNC_HAVE_PHP_53 ZEND_MODULE_API_NO >= 20071006
 
-#include <librsync.h>
+#include <external_libraries.h>
 
 PHP_MINIT_FUNCTION(rsync);
 PHP_MSHUTDOWN_FUNCTION(rsync);

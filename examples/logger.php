@@ -7,7 +7,7 @@
  * @author ironpinguin
  *
  */
-class logger
+class rsyncLogger
 {
     /**
      * Log file.
@@ -32,7 +32,7 @@ class logger
     public static function getInstance()
     {
         if (self::$instance == null) {
-            self::$instance = new logger();
+            self::$instance = new rsyncLogger();
         }
         return self::$instance;
     }

@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://pear.php.net/dtd/package-2.0" xmlns:tasks="http://pear.php.net/dtd/tasks-1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" packagerversion="1.4.7" version="2.0" xsi:schemaLocation="http://pear.php.net/dtd/tasks-1.0 http://pear.php.net/dtd/tasks-1.0.xsd http://pear.php.net/dtd/package-2.0 http://pear.php.net/dtd/package-2.0.xsd">
+  <name>rsync</name>
+  <channel>pecl.php.net</channel>
+  <summary>Wrapper for librsync library</summary>
+  <description>The librsync library itself can be found at http://librsync.sourceforge.org/ and implements rsync remote-delta algorithm (http://rsync.samba.org/tech_report).
+
+This algorithm is using a rolling check-sum and a md4 check-sum for
+blocks of the file to generate a signature file. The signature file is used
+to generate a diff from the file on the remote site. This diff can be
+used on the local site to patch the file.
+The Algorithm is from rsync 1.x and not compatible with rsync 2.x.</description>
+  <lead>
+    <name>Michele Catalano</name>
+    <user>ironpinguin</user>
+    <email>michele@catalano.de</email>
+    <active>yes</active>
+  </lead>
+  <date>2011-05-30</date>
+  <version>
+    <release>0.1.0</release>
+    <api>0.1.0</api>
+  </version>
+  <stability>
+    <release>beta</release>
+    <api>beta</api>
+  </stability>
+  <license uri="http://www.opensource.org/licenses/bsd-license.php">Modified BSD License</license>
+  <notes>
+0.1.0 release
+  </notes>
+  <contents>
+    <dir name="/">
+      <file role="doc" name="CREDITS"/>
+      <file role="doc" name="LICENSE"/>
+      <file role="doc" name="EXPERIMENTAL"/>
+      <file role="doc" name="README"/>
+      <file role="doc" name="TODO"/>
+      <file role="doc" name="rsync_extension.php"/>
+      <file role="src" name="config.m4"/>
+      <file role="src" name="config.w32"/>
+      <file role="src" name="php_rsync.h"/>
+      <file role="src" name="external_libraries.h"/>
+      <file role="src" name="rsync.c"/>
+      <file role="src" name="librsync-0.9.7-vc9-x86.zip"/>
+      <file role="php" name="rsync.php"/>
+      <dir name="examples">
+        <file role="php" name="client.php"/>
+        <file role="php" name="logger.php"/>
+        <file role="php" name="server.php"/>
+      </dir>
+      <dir name="librsync">
+        <file role="doc" name="COPYING"/>
+        <file role="doc" name="AUTHORS"/>
+        <file role="doc" name="ChangeLog"/>
+        <file role="doc" name="NEWS"/>
+        <file role="doc" name="README"/>
+        <file role="doc" name="README.CVS"/>
+        <file role="doc" name="README.RPM"/>
+        <file role="doc" name="THANKS"/>
+        <file role="doc" name="TODO"/>
+        <file role="src" name="aclocal.m4"/>
+        <file role="src" name="base64.c"/>
+        <file role="src" name="base64.c"/>
+        <file role="src" name="autogen.sh"/>
+        <file role="src" name="base64.c"/>
+        <file role="src" name="buf.c"/>
+        <file role="src" name="buf.h"/>
+        <file role="src" name="checksum.c"/>
+        <file role="src" name="checksum.h"/>
+        <file role="src" name="command.c"/>
+        <file role="src" name="command.h"/>
+        <file role="src" name="config.guess"/>
+        <file role="src" name="config.h.in"/>
+        <file role="src" name="config.sub"/>
+        <file role="src" name="configure"/>
+        <file role="src" name="configure.ac"/>
+        <file role="src" name="configure.msc"/>
+        <file role="src" name="delta.c"/>
+        <file role="src" name="depcomp"/>
+        <file role="src" name="emit.c"/>
+        <file role="src" name="emit.h"/>
+        <file role="src" name="fileutil.c"/>
+        <file role="src" name="fileutil.h"/>
+        <file role="src" name="hex.c"/>
+        <file role="src" name="install-sh"/>
+        <file role="src" name="isprefix.c"/>
+        <file role="src" name="isprefix.h"/>
+        <file role="src" name="job.c"/>
+        <file role="src" name="job.h"/>
+        <file role="src" name="librsync-config.h.in"/>
+        <file role="src" name="librsync.h"/>
+        <file role="src" name="librsync.spec"/>
+        <file role="src" name="libversions.txt"/>
+        <file role="src" name="ltmain.sh"/>
+        <file role="src" name="Makefile.am"/>
+        <file role="src" name="Makefile.in"/>
+        <file role="src" name="mdfour.c"/>
+        <file role="src" name="mdfour.h"/>
+        <file role="src" name="missing"/>
+        <file role="src" name="mkinstalldirs"/>
+        <file role="src" name="mkprototab.pl"/>
+        <file role="src" name="mksum.c"/>
+        <file role="src" name="msg.c"/>
+        <file role="src" name="netint.c"/>
+        <file role="src" name="netint.h"/>
+        <file role="src" name="patch.c"/>
+        <file role="src" name="protocol.h"/>
+        <file role="src" name="prototab.c"/>
+        <file role="src" name="prototab.h"/>
+        <file role="src" name="rdiff.c"/>
+        <file role="src" name="rdiff.magic"/>
+        <file role="src" name="readsums.c"/>
+        <file role="src" name="rollsum.c"/>
+        <file role="src" name="rollsum.h"/>
+        <file role="src" name="scoop.c"/>
+        <file role="src" name="search.c"/>
+        <file role="src" name="search.h"/>
+        <file role="src" name="snprintf.c"/>
+        <file role="src" name="snprintf.h"/>
+        <file role="src" name="stats.c"/>
+        <file role="src" name="stream.c"/>
+        <file role="src" name="stream.h"/>
+        <file role="src" name="sumset.c"/>
+        <file role="src" name="sumset.h"/>
+        <file role="src" name="trace.c"/>
+        <file role="src" name="trace.h"/>
+        <file role="src" name="tube.c"/>
+        <file role="src" name="types.h"/>
+        <file role="src" name="util.c"/>
+        <file role="src" name="util.h"/>
+        <file role="src" name="version.c"/>
+        <file role="src" name="whole.c"/>
+        <file role="src" name="whole.h"/>
+        <dir name="doc">
+          <file role="src" name="Doxyfile.in"/>
+          <file role="src" name="librsync.3"/>
+          <file role="src" name="Makefile.am"/>
+          <file role="src" name="Makefile.in"/>
+          <file role="src" name="rdiff.1"/>
+        </dir>
+        <dir name="PCbuild">
+          <file role="src" name="config.h"/>
+          <file role="src" name="librsync-config.h"/>
+          <file role="src" name="PCbuild.dsw"/>
+          <file role="src" name="rdiff.dsp"/>
+        </dir>
+        <dir name="popt">
+          <file role="doc" name="CHANGES"/>
+          <file role="doc" name="COPYING"/>
+          <file role="doc" name="README"/>
+          <file role="src" name="findme.c"/>
+          <file role="src" name="findme.h"/>
+          <file role="src" name="Makefile.am"/>
+          <file role="src" name="Makefile.in"/>
+          <file role="src" name="popt.c"/>
+          <file role="src" name="poptconfig.c"/>
+          <file role="src" name="popt.h"/>
+          <file role="src" name="popthelp.c"/>
+          <file role="src" name="poptint.h"/>
+          <file role="src" name="poptparse.c"/>
+          <file role="src" name="system.h"/>
+        </dir>
+        <dir name="testsuite">
+          <dir name="changes.input">
+            <file role="src" name="01.in"/>
+            <file role="src" name="02.in"/>
+            <file role="src" name="03.in"/>
+            <file role="src" name="04.in"/>
+          </dir>
+          <file role="src" name="changes.test"/>
+          <dir name="delta.input">
+            <file role="src" name="01.delta"/>
+            <file role="src" name="01.expect"/>
+            <file role="src" name="02.delta"/>
+            <file role="src" name="02.expect"/>
+            <file role="src" name="03.delta"/>
+            <file role="src" name="03.expect"/>
+          </dir>
+          <file role="src" name="delta.test"/>
+          <file role="src" name="dot"/>
+          <file role="src" name="driver.sh"/>
+          <file role="src" name="isprefix.driver.c"/>
+          <file role="src" name="isprefix.test"/>
+          <file role="src" name="Makefile.am"/>
+          <file role="src" name="Makefile.in"/>
+          <dir name="mdfour.input">
+            <file role="src" name="01.data"/>
+            <file role="src" name="01.expect"/>
+          </dir>
+          <dir name="mksum.input">
+            <file role="src" name="COPYING.sig"/>
+          </dir>
+          <file role="src" name="mksum.test"/>
+          <file role="src" name="mutate.pl"/>
+          <file role="src" name="mutate.test"/>
+          <dir name="signature.input">
+            <file role="src" name="01.in"/>
+            <file role="src" name="01.sig"/>
+          </dir>
+          <file role="src" name="signature.test"/>
+          <file role="src" name="sources.test"/>
+          <dir name="triple.input">
+            <file role="src" name="copying.in"/>
+            <file role="src" name="half.in"/>
+            <file role="src" name="hello.in"/>
+            <file role="src" name="zero.in"/>
+          </dir>
+          <file role="src" name="triple.test"/>
+        </dir>
+      </dir>          
+      <dir name="tests">
+        <file role="test" name="001.phpt"/>
+        <file role="test" name="002.phpt"/>
+        <file role="test" name="002test.png"/>
+        <file role="test" name="003.phpt"/>
+        <file role="test" name="003signatur.sig"/>
+        <file role="test" name="003test.png"/>
+        <file role="test" name="004.phpt"/>
+        <file role="test" name="004test.patch"/>
+        <file role="test" name="004test.png"/>
+        <file role="test" name="005.phpt"/>
+        <file role="test" name="005test.png"/>
+        <file role="test" name="006.phpt"/>
+        <file role="test" name="006signatur.sig"/>
+        <file role="test" name="006test.png"/>
+        <file role="test" name="007.phpt"/>
+        <file role="test" name="007test.patch"/>
+        <file role="test" name="007test.png"/>
+        <file role="test" name="008.phpt"/>
+        <file role="test" name="009.phpt"/>
+        <file role="test" name="010.phpt"/>
+        <file role="test" name="011.phpt"/>
+        <file role="test" name="012.phpt"/>
+        <file role="test" name="013.phpt"/>
+        <file role="test" name="014.phpt"/>
+      </dir>
+    </dir>
+  </contents>
+  <dependencies>
+    <required>
+      <php>
+        <min>5.2.6</min>
+      </php>
+      <pearinstaller>
+        <min>1.4.0</min>
+      </pearinstaller>
+    </required>
+  </dependencies>
+  <providesextension>rsync</providesextension>
+  <extsrcrelease/>
+  <changelog>
+ </changelog>
+</package>
+<!--
+vim:et:ts=1:sw=1
+-->
