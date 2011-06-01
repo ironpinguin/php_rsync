@@ -12,47 +12,49 @@ if test "$PHP_RSYNC" != "no"; then
   SEARCH_FOR="include/librsync.h"
   if test -r $PHP_RSYNC/$SEARCH_FOR; then # path given as parameter
     RSYNC_DIR=$PHP_RSYNC
-  else # search default path list
-    AC_MSG_CHECKING([for librsync files in default path])
-    for i in $SEARCH_PATH ; do
-      if test -r $i/$SEARCH_FOR; then
-        RSYNC_DIR=$i
-        AC_MSG_RESULT(found in $i)
+  else
+    AC_MSG_CHECKING([for rsync library to use])
+    AC_MSG_RESULT([bundled])
+    if test -d librsync; then
+      dnl doing the bundled librsync config 
+      cd librsync
+      ./configure
+      cd ..
+
+      librsync_sources="librsync/prototab.c librsync/base64.c librsync/buf.c \
+      librsync/checksum.c librsync/command.c librsync/delta.c librsync/emit.c \
+      librsync/fileutil.c librsync/hex.c librsync/job.c librsync/mdfour.c \
+      librsync/mksum.c librsync/msg.c librsync/netint.c \
+      librsync/patch.c librsync/readsums.c \
+      librsync/rollsum.c librsync/scoop.c librsync/search.c librsync/stats.c \
+      librsync/stream.c librsync/sumset.c librsync/trace.c librsync/tube.c \
+      librsync/util.c librsync/version.c librsync/whole.c"
+      PHP_NEW_EXTENSION(rsync, $librsync_sources rsync.c, $ext_shared,,-I./librsync)
+    
+      PHP_ADD_BUILD_DIR($ext_builddir/librsync) 
+      dnl  PHP_INSTALL_HEADERS([ext/rsync], [php_rsync.h rsync/]) 
+      AC_DEFINE(HAVE_BUNDLED_RSYNC, 1, [ ])
+      AC_CHECK_FUNCS([snprintf vsnprintf], [], [])
+
+      dnl AC_CHECK_HEADERS([librsync/prototab.h librsync/buf.h librsync/checksum.h librsync/command.h librsync/emit.h librsync/fileutil.h librsync/job.h librsync/mdfour.h librsync/netint.h librsync/protocol.h librsync/librsync.h librsync/librsync-config.h librsync/rollsum.h librsync/search.h librsync/stream.h librsync/sumset.h librsync/trace.h librsync/types.h librsync/util.h librsync/whole.h librsync/snprintf.h], [], [])
+    else
+      AC_MSG_RESULT([not found])
+      # search default path list
+      AC_MSG_CHECKING([for librsync files in default path])
+      for i in $SEARCH_PATH ; do
+        if test -r $i/$SEARCH_FOR; then
+          RSYNC_DIR=$i
+          AC_MSG_RESULT(found in $i)
+        fi
+      done
+      if test -z "$RSYNC_DIR"; then
+        AC_MSG_RESULT([not found])
+        AC_MSG_ERROR([Please install librsync or put source unter librsync directory here])
       fi
-    done
+    fi  
   fi
   
-  if test -z "$RSYNC_DIR"; then
-    AC_MSG_RESULT([not found])
-    AC_MSG_CHECKING([for rsync library to use])
-    AC_MSG_RESULT([bundled]) 
-
-    if test ! -d librsync; then
-      AC_MSG_RESULT([not found])
-      AC_MSG_ERROR([Please install librsync or put source unter librsync directory here])
-    fi
-    dnl doing the bundled librsync config 
-    cd librsync
-    ./configure
-    cd ..
-
-    librsync_sources="librsync/prototab.c librsync/base64.c librsync/buf.c \
-    librsync/checksum.c librsync/command.c librsync/delta.c librsync/emit.c \
-    librsync/fileutil.c librsync/hex.c librsync/job.c librsync/mdfour.c \
-    librsync/mksum.c librsync/msg.c librsync/netint.c \
-    librsync/patch.c librsync/readsums.c \
-    librsync/rollsum.c librsync/scoop.c librsync/search.c librsync/stats.c \
-    librsync/stream.c librsync/sumset.c librsync/trace.c librsync/tube.c \
-    librsync/util.c librsync/version.c librsync/whole.c"
-    PHP_NEW_EXTENSION(rsync, $librsync_sources rsync.c, $ext_shared,,-I./librsync)
-    
-    PHP_ADD_BUILD_DIR($ext_builddir/librsync) 
-    dnl  PHP_INSTALL_HEADERS([ext/rsync], [php_rsync.h rsync/]) 
-    AC_DEFINE(HAVE_BUNDLED_RSYNC, 1, [ ])
-    AC_CHECK_FUNCS([snprintf vsnprintf], [], [])
-
-    dnl AC_CHECK_HEADERS([librsync/prototab.h librsync/buf.h librsync/checksum.h librsync/command.h librsync/emit.h librsync/fileutil.h librsync/job.h librsync/mdfour.h librsync/netint.h librsync/protocol.h librsync/librsync.h librsync/librsync-config.h librsync/rollsum.h librsync/search.h librsync/stream.h librsync/sumset.h librsync/trace.h librsync/types.h librsync/util.h librsync/whole.h librsync/snprintf.h], [], [])
-  else
+  if ! test -z "$RSYNC_DIR"; then
     dnl set the infos to the externel lib
 
     dnl # --with-rsync -> check for lib and symbol presence
@@ -69,8 +71,7 @@ if test "$PHP_RSYNC" != "no"; then
       -L$RSYNC_DIR/lib -lm
     ])
   
-    PHP_NEW_EXTENSION(rsync, rsync.c, $ext_shared)
-      
+    PHP_NEW_EXTENSION(rsync, rsync.c, $ext_shared)      
   fi
   
   dnl # --with-rsync -> add include path
