@@ -99,17 +99,47 @@ static int array_init_size(zval *arg, uint size ZEND_FILE_LINE_DC) /* {{{ */
 /* }}} */
 #endif
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_signature, 0, 0, 2)
+    ZEND_ARG_INFO(0, file)
+    ZEND_ARG_INFO(0, signaturfile)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_delta, 0, 0, 3)
+    ZEND_ARG_INFO(0, signaturfile)
+    ZEND_ARG_INFO(0, file)
+    ZEND_ARG_INFO(0, deltafile)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_patch_file, 0, 0, 3)
+    ZEND_ARG_INFO(0, file)
+    ZEND_ARG_INFO(0, deltafile)
+    ZEND_ARG_INFO(0, newfile)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_set_log_callback, 0, 0, 1)
+    ZEND_ARG_INFO(0, callback)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_set_log_level, 0, 0, 1)
+    ZEND_ARG_INFO(0, level)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_error, 0, 0, 0)
+    ZEND_ARG_INFO(0, result)
+ZEND_END_ARG_INFO()
+
+/* }}} */
 /* {{{ rsync_functions[]
  *
  * Every user visible function must have an entry in rsync_functions[].
  */
 const zend_function_entry rsync_functions[] = {
-    PHP_FE(rsync_generate_signature,    NULL)
-    PHP_FE(rsync_generate_delta,    NULL)
-    PHP_FE(rsync_patch_file,    NULL)
-    PHP_FE(rsync_set_log_callback, NULL)
-    PHP_FE(rsync_set_log_level, NULL)
-    PHP_FE(rsync_error, NULL)
+    PHP_FE(rsync_generate_signature, arginfo_rsync_generate_signature)
+    PHP_FE(rsync_generate_delta, arginfo_rsync_generate_delta)
+    PHP_FE(rsync_patch_file, arginfo_rsync_patch_file)
+    PHP_FE(rsync_set_log_callback, arginfo_rsync_set_log_callback)
+    PHP_FE(rsync_set_log_level, arginfo_rsync_set_log_level)
+    PHP_FE(rsync_error, arginfo_rsync_error)
     {NULL, NULL, NULL}    /* Must be the last line in rsync_functions[] */
 };
 /* }}} */
@@ -435,32 +465,6 @@ PHP_MINFO_FUNCTION(rsync)
 }
 /* }}} */
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_signature, 0, 0, 2)
-    ZEND_ARG_INFO(0, file)
-    ZEND_ARG_INFO(0, signaturfile)
-ZEND_END_ARG_INFO()
-
-ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_delta, 0, 0, 3)
-    ZEND_ARG_INFO(0, signaturfile)
-    ZEND_ARG_INFO(0, file)
-    ZEND_ARG_INFO(0, deltafile)
-ZEND_END_ARG_INFO()
-
-ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_patch_file, 0, 0, 3)
-    ZEND_ARG_INFO(0, file)
-    ZEND_ARG_INFO(0, deltafile)
-    ZEND_ARG_INFO(0, newfile)
-ZEND_END_ARG_INFO()
-
-ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_set_log_callback, 0, 0, 1)
-    ZEND_ARG_INFO(0, callback)
-ZEND_END_ARG_INFO()
-
-ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_error, 0, 0, 1)
-    ZEND_ARG_INFO(0, result)
-ZEND_END_ARG_INFO()
-
-/* }}} */
 
 /* {{{ proto int rsync_generate_signature(string file, string sigfile [, int block_len][, int strong_len ])
    Generate a signatur file from the given file */
