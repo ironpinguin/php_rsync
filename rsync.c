@@ -197,7 +197,8 @@ php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
     int         is_write;
     char        *string;
     int         strlen;
-    int options = REPORT_ERRORS | STREAM_MUST_SEEK | STREAM_WILL_CAST;
+    char        *type_string;
+    int options =  STREAM_MUST_SEEK | STREAM_WILL_CAST;
 
     if (Z_TYPE_PP(file) == IS_RESOURCE) {
         php_stream_from_zval(stream, file);
@@ -217,14 +218,15 @@ php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
         stream = php_stream_open_wrapper(string, mode, options, NULL);
 
         if (NULL == stream) {
-        	zend_throw_exception_ex(
-        		RsyncFileIoException_ce,
-        		0 TSRMLS_CC,
-        		"Could not open \"%s\" for %s: %s",
-        		string,
-        		(is_write ? "write" : "read"),
-        		strerror(errno)
-        	);
+		type_string = is_write ? "write" : "read";
+		zend_throw_exception_ex(
+			RsyncFileIoException_ce,
+			0 TSRMLS_CC,
+			"Could not open \"%s\" for %s: %s",
+			string,
+			type_string,
+			strerror(errno)
+		);
         }
     } else {
     	/* TODO dump the given value */
