@@ -17,7 +17,7 @@
 #define PHP_RSYNC_H
 
 #define PHP_RSYNC_EXTNAME "rsync"
-#define PHP_RSYNC_EXTVER "0.1"
+#define PHP_RSYNC_EXTVER "0.1.0"
 
 extern zend_module_entry rsync_module_entry;
 #define phpext_rsync_ptr &rsync_module_entry
