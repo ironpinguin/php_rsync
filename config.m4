@@ -29,7 +29,7 @@ if test "$PHP_RSYNC" != "no"; then
       librsync/rollsum.c librsync/scoop.c librsync/search.c librsync/stats.c \
       librsync/stream.c librsync/sumset.c librsync/trace.c librsync/tube.c \
       librsync/util.c librsync/version.c librsync/whole.c"
-      PHP_NEW_EXTENSION(rsync, $librsync_sources rsync.c, $ext_shared,,-I./librsync)
+      PHP_NEW_EXTENSION(rsync, $librsync_sources functions.c rsync.c, $ext_shared,,-I./librsync)
     
       PHP_ADD_BUILD_DIR($ext_builddir/librsync) 
       dnl  PHP_INSTALL_HEADERS([ext/rsync], [php_rsync.h rsync/]) 
@@ -71,7 +71,7 @@ if test "$PHP_RSYNC" != "no"; then
       -L$RSYNC_DIR/lib -lm
     ])
   
-    PHP_NEW_EXTENSION(rsync, rsync.c, $ext_shared)      
+    PHP_NEW_EXTENSION(rsync, functions.c rsync.c, $ext_shared)      
   fi
   
   dnl # --with-rsync -> add include path

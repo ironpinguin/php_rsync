@@ -99,6 +99,9 @@ static int array_init_size(zval *arg, uint size ZEND_FILE_LINE_DC) /* {{{ */
 /* }}} */
 #endif
 
+extern zend_object_value php_rsync_object_init(zend_class_entry *ze TSRMLS_DC);
+//php_stream *php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC);
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_signature, 0, 0, 2)
     ZEND_ARG_INFO(0, file)
     ZEND_ARG_INFO(0, signaturfile)
@@ -141,6 +144,16 @@ const zend_function_entry rsync_functions[] = {
     PHP_FE(rsync_set_log_level, arginfo_rsync_set_log_level)
     PHP_FE(rsync_error, arginfo_rsync_error)
     {NULL, NULL, NULL}    /* Must be the last line in rsync_functions[] */
+};
+/* }}} */
+
+/* The main rsync class entry */
+zend_class_entry *Rsync_ce;
+
+/* {{{ Rsync_methods[] */
+const zend_function_entry Rsync_methods[] = {
+	PHP_ME(Rsync, __construct, NULL, ZEND_ACC_PUBLIC)
+	{NULL, NULL, NULL}
 };
 /* }}} */
 
@@ -363,6 +376,10 @@ PHP_MINIT_FUNCTION(rsync)
     ZEND_INIT_MODULE_GLOBALS(rsync, php_rsync_globals_ctor, php_rsync_globals_dtor);
 
     zend_class_entry ce;
+
+	INIT_CLASS_ENTRY(ce, "Rsync", Rsync_methods);
+	ce.create_object = php_rsync_object_init;
+	Rsync_ce = zend_register_internal_class(&ce TSRMLS_CC);
 
     INIT_CLASS_ENTRY(ce, "RsyncException", NULL);
     RsyncException_ce = zend_register_internal_class_ex(
@@ -690,6 +707,13 @@ PHP_FUNCTION(rsync_error)
     }
 
     RETVAL_STRING(rs_strerror(result), 1);
+}
+/* }}} */
+
+/* proto Rsync::__costruct(array options) the main rsync class constructor */
+PHP_METHOD(Rsync, __construct)
+{
+	
 }
 /* }}} */
 
