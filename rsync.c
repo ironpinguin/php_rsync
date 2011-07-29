@@ -153,6 +153,12 @@ zend_class_entry *Rsync_ce;
 /* {{{ Rsync_methods[] */
 const zend_function_entry Rsync_methods[] = {
 	PHP_ME(Rsync, __construct, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Rsync, generateSignature, NULL, 	ZEND_ACC_PUBLIC)
+	PHP_ME(Rsync, generateDelta, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Rsync, patchFile, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Rsync, setLogCallback, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Rsync, setLogLevel, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(Rsync, getError, NULL, ZEND_ACC_PUBLIC)
 	{NULL, NULL, NULL}
 };
 /* }}} */
@@ -671,7 +677,7 @@ PHP_FUNCTION(rsync_set_log_callback)
 /* }}} */
 
 
-/* {{{ proto rsync_set_log_callback(string|array callback) set logging callback */
+/* {{{ proto rsync_set_log_level(integer) set logging level */
 PHP_FUNCTION(rsync_set_log_level)
 {
     long level = RS_LOG_EMERG;
@@ -714,6 +720,51 @@ PHP_FUNCTION(rsync_error)
 PHP_METHOD(Rsync, __construct)
 {
 	
+}
+/* }}} */
+
+/* {{{ proto int Rsync::generateSignature(string file, string sigfile [, int block_len][, int strong_len ])
+   Generate a signatur file from the given file */
+PHP_METHOD(Rsync, generateSignature)
+{
+
+}
+/* }}} */
+
+/* {{{ proto int Rsync::generateDelta(string sigfile, string file, string deltafile)
+   Generate the delta from signature to the file */
+PHP_METHOD(Rsync, generateDelta)
+{
+
+}
+/* }}} */
+
+/* {{{ proto int Rsync::patchFile(string file, string deltafile, string newfile)
+   Patch the file with delta and write the resulte in newfile */
+PHP_METHOD(Rsync, patchFile)
+{
+
+}
+/* }}} */
+
+/* {{{ proto Rsync::setLogCallback(string|array callback) set logging callback*/
+PHP_METHOD(Rsync, setLogCallback)
+{
+
+}
+/* }}} */
+
+/* {{{ proto Rsync::setLogLevel(integer) set logging level */
+PHP_METHOD(Rsync, setLogLevel)
+{
+
+}
+/* }}} */
+
+/* {{{ proto Rsync::getError(integer) get the string representation of a rsync result code */
+PHP_METHOD(Rsync, getError)
+{
+
 }
 /* }}} */
 

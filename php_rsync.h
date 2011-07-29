@@ -52,6 +52,13 @@ PHP_FUNCTION(rsync_set_log_level);
 PHP_FUNCTION(rsync_error);
 
 PHP_METHOD(Rsync, __construct);
+PHP_METHOD(Rsync, generateSignature);
+PHP_METHOD(Rsync, generateDelta);
+PHP_METHOD(Rsync, patchFile);
+PHP_METHOD(Rsync, setLogCallback);
+PHP_METHOD(Rsync, setLogLevel);
+PHP_METHOD(Rsync, getError);
+
 
 struct php_rsync_log_callback {
 	zend_fcall_info fci;
