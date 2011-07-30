@@ -99,9 +99,6 @@ static int array_init_size(zval *arg, uint size ZEND_FILE_LINE_DC) /* {{{ */
 /* }}} */
 #endif
 
-extern zend_object_value php_rsync_object_init(zend_class_entry *ze TSRMLS_DC);
-//php_stream *php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC);
-
 ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_signature, 0, 0, 2)
     ZEND_ARG_INFO(0, file)
     ZEND_ARG_INFO(0, signaturfile)
@@ -148,7 +145,7 @@ const zend_function_entry rsync_functions[] = {
 /* }}} */
 
 /* The main rsync class entry */
-zend_class_entry *Rsync_ce;
+static zend_class_entry *Rsync_ce;
 
 /* {{{ Rsync_methods[] */
 const zend_function_entry Rsync_methods[] = {
@@ -204,6 +201,58 @@ PHP_INI_BEGIN()
 PHP_INI_END()
 /* }}} */
 
+/* {{{ php_rsync_object_destroy */
+void
+php_rsync_object_destroy(void *obj TSRMLS_DC)
+{
+    struct ze_rsync_main_obj *zrmo = (struct ze_rsync_main_obj*) obj;
+
+    zend_object_std_dtor(&zrmo->zo TSRMLS_CC);
+
+    if (zrmo->has_log_cb) {
+        efree(&zrmo->log_cb);
+    }
+
+    efree(zrmo);
+}
+/* }}} */
+
+/* {{{ php_rsync_object_init */
+zend_object_value
+php_rsync_object_init(zend_class_entry *ze TSRMLS_DC)
+{
+    zend_object_value ret;
+    struct ze_rsync_main_obj *zrmo;
+    zval *tmp;
+
+    zrmo = (struct ze_rsync_main_obj*) emalloc(sizeof(struct ze_rsync_main_obj));
+    memset(&zrmo->zo, 0, sizeof(zend_object));
+
+    zend_object_std_init(&zrmo->zo, ze TSRMLS_CC);
+    zend_hash_copy(zrmo->zo.properties, &ze->default_properties,
+            (copy_ctor_func_t) zval_add_ref,
+            (void*) &tmp, sizeof(zval *));
+
+    zrmo->block_length = RS_DEFAULT_BLOCK_LEN;
+    zrmo->strong_length = RS_DEFAULT_STRONG_LEN;
+    zrmo->log_stats = 0;
+    zrmo->has_log_cb = 0;
+    zrmo->error = 0;
+    zrmo->log_cb.fci.function_name = NULL;
+#if PHP_VERSION_ID >= 50300
+        zrmo->log_cb.fci.object_ptr = NULL;
+#endif
+    
+    ret.handle = zend_objects_store_put(zrmo, NULL,
+            (zend_objects_free_object_storage_t) php_rsync_object_destroy,
+            NULL TSRMLS_CC);
+
+    ret.handlers = zend_get_std_object_handlers();
+    ret.handlers->clone_obj = NULL;
+
+    return ret;
+}
+/* }}} */
 
 /* {{{ php_rsync_file_open
  * 
