@@ -529,9 +529,33 @@ PHP_MINFO_FUNCTION(rsync)
 /* }}} */
 
 static int
-php_rsync_generate_signature(php_stream *in, zval *file, php_stream *sig, zval *sigfile)
+php_rsync_generate_signature(zval **file, zval **sigfile, long block_length, long strong_length TSRMLS_DC)
 {
-	
+    php_stream *infile_stream, *sigfile_stream;
+    FILE *infile, *signaturfile;
+	int ret;
+    
+    infile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
+    if (NULL == infile_stream) {
+    	return RS_INTERNAL_ERROR;
+    }
+
+    sigfile_stream = php_rsync_file_open(sigfile, "wb" TSRMLS_CC);
+    if (NULL == sigfile_stream) {
+    	php_stream_close(infile_stream);
+    	return RS_INTERNAL_ERROR;
+    }
+
+    php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, REPORT_ERRORS);
+    php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
+
+    ret = rs_sig_file(infile, signaturfile, block_length, strong_length, &RSYNC_G(stats));
+    php_rsync_log_stats(TSRMLS_C);
+
+    if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
+    if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
+    
+	return ret;
 }
 
 /* {{{ proto int rsync_generate_signature(string file, string sigfile [, int block_len][, int strong_len ])
@@ -541,37 +565,14 @@ PHP_FUNCTION(rsync_generate_signature)
     zval **file = NULL;
     zval **sigfile = NULL;
     int argc = ZEND_NUM_ARGS();
-    int file_len;
-    int sigfile_len;
-    FILE *infile, *signaturfile;
-    php_stream *infile_stream, *sigfile_stream;
 
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZ", &file, &sigfile) == FAILURE) {
         RETURN_LONG(RS_INTERNAL_ERROR);
 		return;
 	}
     
-    infile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
-    if (NULL == infile_stream) {
-    	RETURN_LONG(RS_INTERNAL_ERROR);
-		return;
-    }
-    sigfile_stream = php_rsync_file_open(sigfile, "wb" TSRMLS_CC);
-    if (NULL == sigfile_stream) {
-    	php_stream_close(infile_stream);
-    	RETURN_LONG(RS_INTERNAL_ERROR);
-		return;
-    }
+	RSYNC_G(ret) = php_rsync_generate_signature(file, sigfile, RSYNC_G(block_length), RSYNC_G(strong_length) TSRMLS_CC);
 
-    php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, REPORT_ERRORS);
-    php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
-
-    RSYNC_G(ret) = rs_sig_file(infile, signaturfile, RSYNC_G(block_length), RSYNC_G(strong_length), &RSYNC_G(stats));
-    php_rsync_log_stats(TSRMLS_C);
-
-    if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
-    if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
-    
     RETURN_LONG(RSYNC_G(ret));
 }
 /* }}} */
