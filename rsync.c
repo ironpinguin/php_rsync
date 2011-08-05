@@ -209,10 +209,6 @@ php_rsync_object_destroy(void *obj TSRMLS_DC)
 
     zend_object_std_dtor(&zrmo->zo TSRMLS_CC);
 
-    if (zrmo->has_log_cb) {
-        efree(&zrmo->log_cb);
-    }
-
     efree(zrmo);
 }
 /* }}} */
@@ -235,13 +231,6 @@ php_rsync_object_init(zend_class_entry *ze TSRMLS_DC)
 
     zrmo->block_length = RS_DEFAULT_BLOCK_LEN;
     zrmo->strong_length = RS_DEFAULT_STRONG_LEN;
-    zrmo->log_stats = 0;
-    zrmo->has_log_cb = 0;
-    zrmo->error = 0;
-    zrmo->log_cb.fci.function_name = NULL;
-#if PHP_VERSION_ID >= 50300
-        zrmo->log_cb.fci.object_ptr = NULL;
-#endif
     
     ret.handle = zend_objects_store_put(zrmo, NULL,
             (zend_objects_free_object_storage_t) php_rsync_object_destroy,
@@ -258,7 +247,7 @@ php_rsync_object_init(zend_class_entry *ze TSRMLS_DC)
  * 
  */
 php_stream *
-php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
+php_rsync_file_open(zval **file, char *mode TSRMLS_DC)
 {
 	zval        *return_value;
     php_stream  *stream = NULL;
@@ -275,7 +264,7 @@ php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
 				RsyncStreamNotCastableException_ce,
 				0 TSRMLS_CC,
 				"The stream for \"%s\" is not castable",
-				name
+				(stream && stream->orig_path) ? estrdup(stream->orig_path) : "''"
         	);
         }
     } else if (Z_TYPE_PP(file) == IS_STRING) {
@@ -297,12 +286,12 @@ php_rsync_file_open(zval **file, char *mode, char *name TSRMLS_DC)
 		);
         }
     } else {
-    	/* TODO dump the given value */
+		convert_to_string(*file);
     	zend_throw_exception_ex(
     		RsyncInvalidArgumentException_ce,
     		0 TSRMLS_CC,
-    		"\"%s\" must be of the type string or stream",
-    		name
+    		"Expected string or stream, \"%s\" was given", /* XXX give file and line */
+			estrdup(Z_STRVAL_PP(file))
     	);
     }
 
@@ -539,6 +528,11 @@ PHP_MINFO_FUNCTION(rsync)
 }
 /* }}} */
 
+static int
+php_rsync_generate_signature(php_stream *in, zval *file, php_stream *sig, zval *sigfile)
+{
+	
+}
 
 /* {{{ proto int rsync_generate_signature(string file, string sigfile [, int block_len][, int strong_len ])
    Generate a signatur file from the given file */
@@ -546,25 +540,27 @@ PHP_FUNCTION(rsync_generate_signature)
 {
     zval **file = NULL;
     zval **sigfile = NULL;
-    char *file1 = "file";
-    char *file2 = "signature file";
     int argc = ZEND_NUM_ARGS();
     int file_len;
     int sigfile_len;
     FILE *infile, *signaturfile;
     php_stream *infile_stream, *sigfile_stream;
 
-    if (zend_parse_parameters(argc TSRMLS_CC, "ZZ", &file, &sigfile) == FAILURE)
-        return;
+    if (zend_parse_parameters(argc TSRMLS_CC, "ZZ", &file, &sigfile) == FAILURE) {
+        RETURN_LONG(RS_INTERNAL_ERROR);
+		return;
+	}
     
-    infile_stream = php_rsync_file_open(file, "rb", file1 TSRMLS_CC);
+    infile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
     if (NULL == infile_stream) {
-    	return;
+    	RETURN_LONG(RS_INTERNAL_ERROR);
+		return;
     }
-    sigfile_stream = php_rsync_file_open(sigfile, "wb", file2 TSRMLS_CC);
+    sigfile_stream = php_rsync_file_open(sigfile, "wb" TSRMLS_CC);
     if (NULL == sigfile_stream) {
     	php_stream_close(infile_stream);
-    	return;
+    	RETURN_LONG(RS_INTERNAL_ERROR);
+		return;
     }
 
     php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, REPORT_ERRORS);
@@ -587,9 +583,6 @@ PHP_FUNCTION(rsync_generate_delta)
     zval **sigfile = NULL;
     zval **file = NULL;
     zval **deltafile = NULL;
-    char *file1 = "signature file";
-    char *file2 = "file";
-    char *file3 = "delta file";
     int argc = ZEND_NUM_ARGS();
     int sigfile_len;
     int file_len;
@@ -601,7 +594,7 @@ PHP_FUNCTION(rsync_generate_delta)
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &sigfile, &file, &deltafile, &deltafile_len) == FAILURE)
         return;
 
-    sigfile_stream = php_rsync_file_open(sigfile, "rb", file1 TSRMLS_CC);
+    sigfile_stream = php_rsync_file_open(sigfile, "rb" TSRMLS_CC);
     if (NULL == sigfile_stream) {
     	return;
     }
@@ -621,12 +614,12 @@ PHP_FUNCTION(rsync_generate_delta)
         RETURN_LONG(RSYNC_G(ret));
     }
 
-    infile_stream = php_rsync_file_open(file, "rb", file2 TSRMLS_CC);
+    infile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
     if (NULL == infile_stream) {
     	php_stream_close(sigfile_stream);
     	return;
     }
-    deltafile_stream = php_rsync_file_open(deltafile, "wb", file3 TSRMLS_CC);
+    deltafile_stream = php_rsync_file_open(deltafile, "wb" TSRMLS_CC);
     if (NULL == deltafile_stream) {
     	php_stream_close(infile_stream);
     	php_stream_close(sigfile_stream);
@@ -654,9 +647,6 @@ PHP_FUNCTION(rsync_patch_file)
     zval **file = NULL;
     zval **deltafile = NULL;
     zval **newfile = NULL;
-    char *file1 = "file";
-    char *file2 = "delta file";
-    char *file3 = "new file";
     int argc = ZEND_NUM_ARGS();
     int file_len;
     int deltafile_len;
@@ -667,16 +657,16 @@ PHP_FUNCTION(rsync_patch_file)
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &file, &deltafile, &newfile) == FAILURE)
         return;
 
-    basisfile_stream = php_rsync_file_open(file, "rb", file1 TSRMLS_CC);
+    basisfile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
     if (NULL == basisfile_stream) {
     	return;
     }
-    deltafile_stream = php_rsync_file_open(deltafile, "rb", file2 TSRMLS_CC);
+    deltafile_stream = php_rsync_file_open(deltafile, "rb" TSRMLS_CC);
     if (NULL == deltafile_stream) {
     	php_stream_close(basisfile_stream);
     	return;
     }
-    newfile_stream = php_rsync_file_open(newfile, "wb", file3 TSRMLS_CC);
+    newfile_stream = php_rsync_file_open(newfile, "wb" TSRMLS_CC);
     if (NULL == newfile_stream) {
     	php_stream_close(basisfile_stream);
     	php_stream_close(deltafile_stream);

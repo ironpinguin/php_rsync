@@ -73,12 +73,12 @@ try {
 print implode("\n", $out) . "\n";
 ?>
 --EXPECTF--
-"file" must be of the type string or stream
-"signature file" must be of the type string or stream
-"signature file" must be of the type string or stream
-"file" must be of the type string or stream
-"delta file" must be of the type string or stream
-"file" must be of the type string or stream
-"delta file" must be of the type string or stream
-"new file" must be of the type string or stream
+Expected string or stream, "42" was given
+Expected string or stream, "42" was given
+Expected string or stream, "42" was given
+Expected string or stream, "42" was given
+Expected string or stream, "42" was given
+Expected string or stream, "42" was given
+Expected string or stream, "42" was given
+Expected string or stream, "42" was given
 Invalid log level value
