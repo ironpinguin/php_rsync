@@ -60,10 +60,6 @@ PHP_METHOD(Rsync, setLogLevel);
 PHP_METHOD(Rsync, getError);
 
 
-struct php_rsync_log_callback {
-	zend_fcall_info fci;
-	zend_fcall_info_cache fcc;
-};
 
 ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	char *tmp_dir;
@@ -71,7 +67,10 @@ ZEND_BEGIN_MODULE_GLOBALS(rsync)
 	long strong_length;
 	rs_stats_t stats;
 	rs_result ret;
-	struct php_rsync_log_callback log_cb;
+	struct php_rsync_log_callback {
+		zend_fcall_info fci;
+		zend_fcall_info_cache fcc;
+	} log_cb;
 	int error;
 	int has_log_cb;
 	long log_stats;
@@ -83,10 +82,6 @@ struct ze_rsync_main_obj {
 	long strong_length;
 	rs_stats_t stats;
 	rs_result ret;
-	struct php_rsync_log_callback log_cb;
-	int error;
-	int has_log_cb;
-	long log_stats;
 };
 #ifdef ZTS
 #define RSYNC_G(v) TSRMG(rsync_globals_id, zend_rsync_globals *, v)
