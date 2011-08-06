@@ -789,7 +789,7 @@ PHP_METHOD(Rsync, __construct)
 		}
 
 		if (zend_hash_find(Z_ARRVAL_P(opts), "strong_length", sizeof("strong_length"), (void **)&slen) != FAILURE) {
-			zrmo->strong_length = Z_LONGVAL_PP(slen);
+			zrmo->strong_length = Z_LVAL_PP(slen);
 		}
 	}
 	/* XXX init also filenames or streams internally and make some method arguments optional */
