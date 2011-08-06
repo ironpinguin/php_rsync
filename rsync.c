@@ -706,7 +706,6 @@ PHP_FUNCTION(rsync_patch_file)
 	RSYNC_G(ret) = php_rsync_patch_file(file, deltafile, newfile TSRMLS_CC);
 
     RETURN_LONG(RSYNC_G(ret));
-
 }
 /* }}} */
 
@@ -807,7 +806,20 @@ PHP_METHOD(Rsync, __construct)
    Generate a signatur file from the given file */
 PHP_METHOD(Rsync, generateSignature)
 {
+    zval **file = NULL, **sigfile = NULL;
+    int argc = ZEND_NUM_ARGS();
+	struct ze_rsync_main_obj *zrmo;
 
+    if (zend_parse_parameters(argc TSRMLS_CC, "ZZ", &file, &sigfile) == FAILURE) {
+        RETURN_LONG(RS_INTERNAL_ERROR);
+		return;
+	}
+
+	zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    
+	zrmo->ret = php_rsync_generate_signature(file, sigfile, zrmo->block_length, zrmo->strong_length TSRMLS_CC);
+
+    RETURN_LONG(zrmo->ret);
 }
 /* }}} */
 
@@ -815,7 +827,20 @@ PHP_METHOD(Rsync, generateSignature)
    Generate the delta from signature to the file */
 PHP_METHOD(Rsync, generateDelta)
 {
+    zval **sigfile = NULL, **file = NULL, **deltafile = NULL;
+    int argc = ZEND_NUM_ARGS();
+	struct ze_rsync_main_obj *zrmo;
 
+    if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &sigfile, &file, &deltafile) == FAILURE) {
+		RETURN_LONG(RS_INTERNAL_ERROR);
+        return;
+	}
+
+	zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
+
+	zrmo->ret = php_rsync_generate_delta(sigfile, file, deltafile TSRMLS_CC);
+
+    RETURN_LONG(zrmo->ret);
 }
 /* }}} */
 
@@ -823,7 +848,20 @@ PHP_METHOD(Rsync, generateDelta)
    Patch the file with delta and write the resulte in newfile */
 PHP_METHOD(Rsync, patchFile)
 {
+    zval **file = NULL, **deltafile = NULL, **newfile = NULL;
+    int argc = ZEND_NUM_ARGS();
+	struct ze_rsync_main_obj *zrmo;
 
+    if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &file, &deltafile, &newfile) == FAILURE) {
+		RETURN_LONG(RS_INTERNAL_ERROR);
+        return;
+	}
+
+	zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
+
+	zrmo->ret = php_rsync_patch_file(file, deltafile, newfile TSRMLS_CC);
+
+    RETURN_LONG(zrmo->ret);
 }
 /* }}} */
 
