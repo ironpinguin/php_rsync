@@ -562,8 +562,7 @@ php_rsync_generate_signature(zval **file, zval **sigfile, long block_length, lon
    Generate a signatur file from the given file */
 PHP_FUNCTION(rsync_generate_signature)
 {
-    zval **file = NULL;
-    zval **sigfile = NULL;
+    zval **file = NULL, **sigfile = NULL;
     int argc = ZEND_NUM_ARGS();
 
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZ", &file, &sigfile) == FAILURE) {
@@ -634,9 +633,7 @@ php_rsync_generate_delta(zval **sigfile, zval **file, zval **deltafile TSRMLS_DC
    Generate the delta from signature to the file */
 PHP_FUNCTION(rsync_generate_delta)
 {
-    zval **sigfile = NULL;
-    zval **file = NULL;
-    zval **deltafile = NULL;
+    zval **sigfile = NULL, **file = NULL, **deltafile = NULL;
     int argc = ZEND_NUM_ARGS();
 
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &sigfile, &file, &deltafile) == FAILURE) {
@@ -650,49 +647,56 @@ PHP_FUNCTION(rsync_generate_delta)
 }
 /* }}} */
 
-/* {{{ proto int rsync_patch_file(string file, string deltafile, string newfile)
-   Patch the file with delta and write the resulte in newfile */
-PHP_FUNCTION(rsync_patch_file)
+static int
+php_rsync_patch_file(zval **file, zval **deltafile, zval **newfile TSRMLS_DC)
 {
-    zval **file = NULL;
-    zval **deltafile = NULL;
-    zval **newfile = NULL;
-    int argc = ZEND_NUM_ARGS();
-    int file_len;
-    int deltafile_len;
-    int newfile_len;
-    FILE        *basis_file, *delta_file, *new_file;
+    FILE *basis_file, *delta_file, *new_file;
     php_stream *basisfile_stream, *newfile_stream, *deltafile_stream;
-
-    if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &file, &deltafile, &newfile) == FAILURE)
-        return;
+	int ret;
 
     basisfile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
     if (NULL == basisfile_stream) {
-    	return;
+    	return RS_INTERNAL_ERROR;
     }
     deltafile_stream = php_rsync_file_open(deltafile, "rb" TSRMLS_CC);
     if (NULL == deltafile_stream) {
     	php_stream_close(basisfile_stream);
-    	return;
+    	return RS_INTERNAL_ERROR;
     }
     newfile_stream = php_rsync_file_open(newfile, "wb" TSRMLS_CC);
     if (NULL == newfile_stream) {
     	php_stream_close(basisfile_stream);
     	php_stream_close(deltafile_stream);
-    	return;
+    	return RS_INTERNAL_ERROR;
     }
 
     php_stream_cast(basisfile_stream, PHP_STREAM_AS_STDIO, (void**)&basis_file, 1);
     php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta_file, 1);
     php_stream_cast(newfile_stream, PHP_STREAM_AS_STDIO, (void**)&new_file, 1);
 
-    RSYNC_G(ret) = rs_patch_file(basis_file, delta_file, new_file, &RSYNC_G(stats));
+    ret = rs_patch_file(basis_file, delta_file, new_file, &RSYNC_G(stats));
     php_rsync_log_stats(TSRMLS_C);
 
     if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(basisfile_stream);
     if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(newfile_stream);
     if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(deltafile_stream);
+
+	return ret;
+}
+
+/* {{{ proto int rsync_patch_file(string file, string deltafile, string newfile)
+   Patch the file with delta and write the resulte in newfile */
+PHP_FUNCTION(rsync_patch_file)
+{
+    zval **file = NULL, **deltafile = NULL, **newfile = NULL;
+    int argc = ZEND_NUM_ARGS();
+
+    if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &file, &deltafile, &newfile) == FAILURE) {
+		RETURN_LONG(RS_INTERNAL_ERROR);
+        return;
+	}
+
+	RSYNC_G(ret) = php_rsync_patch_file(file, deltafile, newfile TSRMLS_CC);
 
     RETURN_LONG(RSYNC_G(ret));
 
