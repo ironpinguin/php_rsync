@@ -772,7 +772,27 @@ PHP_FUNCTION(rsync_error)
 /* proto Rsync::__costruct(array options) the main rsync class constructor */
 PHP_METHOD(Rsync, __construct)
 {
-	
+	zval *opts = NULL, **blen, **slen;
+	struct ze_rsync_main_obj *zrmo;
+
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|a", &opts) == FAILURE) {
+		return;
+	}
+
+	zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
+
+	zrmo->block_length = RS_DEFAULT_BLOCK_LEN;
+	zrmo->strong_length = RS_DEFAULT_STRONG_LEN;
+	if (opts) {
+		if (zend_hash_find(Z_ARRVAL_P(opts), "block_length", sizeof("block_length"), (void **)&blen) != FAILURE) {
+			zrmo->block_length = Z_LVAL_PP(blen);
+		}
+
+		if (zend_hash_find(Z_ARRVAL_P(opts), "strong_length", sizeof("strong_length"), (void **)&slen) != FAILURE) {
+			zrmo->strong_length = Z_LONGVAL_PP(slen);
+		}
+	}
+	/* XXX init also filenames or streams internally and make some method arguments optional */
 }
 /* }}} */
 
