@@ -99,6 +99,7 @@ static int array_init_size(zval *arg, uint size ZEND_FILE_LINE_DC) /* {{{ */
 /* }}} */
 #endif
 
+/* {{{ arginfo */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_generate_signature, 0, 0, 2)
     ZEND_ARG_INFO(0, file)
     ZEND_ARG_INFO(0, signaturfile)
@@ -127,8 +128,8 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO_EX(arginfo_rsync_error, 0, 0, 0)
     ZEND_ARG_INFO(0, result)
 ZEND_END_ARG_INFO()
-
 /* }}} */
+
 /* {{{ rsync_functions[]
  *
  * Every user visible function must have an entry in rsync_functions[].
@@ -528,6 +529,7 @@ PHP_MINFO_FUNCTION(rsync)
 }
 /* }}} */
 
+/* {{{ php_rsync_generate_signature */
 static int
 php_rsync_generate_signature(zval **file, zval **sigfile, long block_length, long strong_length TSRMLS_DC)
 {
@@ -557,6 +559,7 @@ php_rsync_generate_signature(zval **file, zval **sigfile, long block_length, lon
     
 	return ret;
 }
+/* }}} */
 
 /* {{{ proto int rsync_generate_signature(string file, string sigfile [, int block_len][, int strong_len ])
    Generate a signatur file from the given file */
@@ -574,8 +577,9 @@ PHP_FUNCTION(rsync_generate_signature)
 
     RETURN_LONG(RSYNC_G(ret));
 }
-/* }}} */
+/* }}} */ 
 
+/* {{{ php_rsync_generate_delta */
 static int
 php_rsync_generate_delta(zval **sigfile, zval **file, zval **deltafile TSRMLS_DC)
 {
@@ -628,6 +632,7 @@ php_rsync_generate_delta(zval **sigfile, zval **file, zval **deltafile TSRMLS_DC
 
 	return ret;
 }
+/* }}} */
 
 /* {{{ proto int rsync_generate_delta(string sigfile, string file, string deltafile)
    Generate the delta from signature to the file */
@@ -647,6 +652,7 @@ PHP_FUNCTION(rsync_generate_delta)
 }
 /* }}} */
 
+/* {{{ php_rsync_patch_file */
 static int
 php_rsync_patch_file(zval **file, zval **deltafile, zval **newfile TSRMLS_DC)
 {
@@ -683,6 +689,7 @@ php_rsync_patch_file(zval **file, zval **deltafile, zval **newfile TSRMLS_DC)
 
 	return ret;
 }
+/* }}} */
 
 /* {{{ proto int rsync_patch_file(string file, string deltafile, string newfile)
    Patch the file with delta and write the resulte in newfile */
@@ -769,7 +776,7 @@ PHP_FUNCTION(rsync_error)
 }
 /* }}} */
 
-/* proto Rsync::__costruct(array options) the main rsync class constructor */
+/* {{{ proto Rsync::__costruct(array options) the main rsync class constructor */
 PHP_METHOD(Rsync, __construct)
 {
 	zval *opts = NULL, **blen, **slen;
