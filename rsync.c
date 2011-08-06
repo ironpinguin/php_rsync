@@ -577,6 +577,59 @@ PHP_FUNCTION(rsync_generate_signature)
 }
 /* }}} */
 
+static int
+php_rsync_generate_delta(zval **sigfile, zval **file, zval **deltafile TSRMLS_DC)
+{
+    php_stream *infile_stream, *sigfile_stream, *deltafile_stream;
+    FILE *signaturfile, *infile, *delta;
+    rs_signature_t  *sumset;
+	int ret;
+
+    sigfile_stream = php_rsync_file_open(sigfile, "rb" TSRMLS_CC);
+    if (NULL == sigfile_stream) {
+    	return RS_INTERNAL_ERROR;
+    }
+
+    php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
+
+    ret = rs_loadsig_file(signaturfile, &sumset, &RSYNC_G(stats));
+    if (ret != RS_DONE) {
+        php_stream_close(sigfile_stream);
+        return ret;
+    }
+    php_rsync_log_stats(TSRMLS_C);
+
+    ret = rs_build_hash_table(sumset);
+    if (ret != RS_DONE) {
+        php_stream_close(sigfile_stream);
+        return ret;
+    }
+
+    infile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
+    if (NULL == infile_stream) {
+    	php_stream_close(sigfile_stream);
+    	return RS_INTERNAL_ERROR;
+    }
+    deltafile_stream = php_rsync_file_open(deltafile, "wb" TSRMLS_CC);
+    if (NULL == deltafile_stream) {
+    	php_stream_close(infile_stream);
+    	php_stream_close(sigfile_stream);
+    	return RS_INTERNAL_ERROR;
+    }
+
+    php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, 1);
+    php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta, 1);
+
+    ret = rs_delta_file(sumset, infile, delta, &RSYNC_G(stats));
+    php_rsync_log_stats(TSRMLS_C);
+
+    if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
+    if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
+    if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(deltafile_stream);
+
+	return ret;
+}
+
 /* {{{ proto int rsync_generate_delta(string sigfile, string file, string deltafile)
    Generate the delta from signature to the file */
 PHP_FUNCTION(rsync_generate_delta)
@@ -585,57 +638,13 @@ PHP_FUNCTION(rsync_generate_delta)
     zval **file = NULL;
     zval **deltafile = NULL;
     int argc = ZEND_NUM_ARGS();
-    int sigfile_len;
-    int file_len;
-    int deltafile_len;
-    FILE *signaturfile, *infile, *delta;
-    rs_signature_t  *sumset;
-    php_stream *infile_stream, *sigfile_stream, *deltafile_stream;
 
-    if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &sigfile, &file, &deltafile, &deltafile_len) == FAILURE)
+    if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &sigfile, &file, &deltafile) == FAILURE) {
+		RETURN_LONG(RS_INTERNAL_ERROR);
         return;
+	}
 
-    sigfile_stream = php_rsync_file_open(sigfile, "rb" TSRMLS_CC);
-    if (NULL == sigfile_stream) {
-    	return;
-    }
-
-    php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
-
-    RSYNC_G(ret) = rs_loadsig_file(signaturfile, &sumset, &RSYNC_G(stats));
-    if (RSYNC_G(ret) != RS_DONE) {
-        php_stream_close(sigfile_stream);
-        RETURN_LONG(RSYNC_G(ret));
-    }
-    php_rsync_log_stats(TSRMLS_C);
-
-    RSYNC_G(ret) = rs_build_hash_table(sumset);
-    if (RSYNC_G(ret) != RS_DONE) {
-        php_stream_close(sigfile_stream);
-        RETURN_LONG(RSYNC_G(ret));
-    }
-
-    infile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
-    if (NULL == infile_stream) {
-    	php_stream_close(sigfile_stream);
-    	return;
-    }
-    deltafile_stream = php_rsync_file_open(deltafile, "wb" TSRMLS_CC);
-    if (NULL == deltafile_stream) {
-    	php_stream_close(infile_stream);
-    	php_stream_close(sigfile_stream);
-    	return;
-    }
-
-    php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, 1);
-    php_stream_cast(deltafile_stream, PHP_STREAM_AS_STDIO, (void**)&delta, 1);
-
-    RSYNC_G(ret) = rs_delta_file(sumset, infile, delta, &RSYNC_G(stats));
-    php_rsync_log_stats(TSRMLS_C);
-
-    if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
-    if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
-    if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(deltafile_stream);
+	RSYNC_G(ret) = php_rsync_generate_delta(sigfile, file, deltafile TSRMLS_CC);
 
     RETURN_LONG(RSYNC_G(ret));
 }
