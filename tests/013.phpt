@@ -13,6 +13,7 @@ $nosense = "." . DIRECTORY_SEPARATOR . "tests" . DIRECTORY_SEPARATOR . "no sense
  
 try {
     rsync_generate_signature(42, $nosense);
+
 } catch (RsyncInvalidArgumentException $e) {
     $out[] = $e->getMessage();
 }
