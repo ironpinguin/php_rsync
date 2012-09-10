@@ -3,5 +3,5 @@ compiler: gcc
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq php5 php5-dev make librsync1 librsync-dev
-env: NO_INTERACTION=true
-script: "phpize && ./configure --with-rsync && make && make test"
+env: NO_INTERACTION=true TESTS="-w testfailed.txt"
+script: "phpize && ./configure --with-rsync && make && make test && ./check_failedTest.sh"

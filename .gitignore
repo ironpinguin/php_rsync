@@ -27,3 +27,10 @@ modules/
 rsync.la
 rsync.lo
 run-tests.php
+tests/*.diff
+tests/*.exp
+tests/*.log
+tests/*.out
+tests/*.php
+tests/*.sh
+testfailed.txt
