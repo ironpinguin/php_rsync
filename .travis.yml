@@ -1,0 +1,6 @@
+language: c
+compiler: gcc
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -qq php5 php5-dev make librsync1 librsync-dev
+script: "phpize && ./configure --with-rsync && make && make test"
