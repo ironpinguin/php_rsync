@@ -1,0 +1,4 @@
+language: c
+compiler: gcc
+install: librsync php5 php5-dev
+script: "phpize && ./configure --with-rsync && make && make test"
