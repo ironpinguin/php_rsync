@@ -1,0 +1,5 @@
+language: c
+compiler: gcc
+php: 5.3
+install: librsync
+script: "phpize && ./configure --with-rsync && make && make test"
