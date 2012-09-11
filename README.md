@@ -1,4 +1,6 @@
-# php extension for librsync [![Build Status](https://secure.travis-ci.org/ironpinguin/php_rsync.png)](http://travis-ci.org/ironpinguin/php_rsync) #
+# php extension for librsync #
+[![Build Status](https://secure.travis-ci.org/ironpinguin/php_rsync.png)](http://travis-ci.org/ironpinguin/php_rsync)
+
 The [PECL/rsync][pecl] extension provides a binding too the librsync c library.
 The librsync library is a opensource implementing of the rsync version 1 algoritmus to exchange data differences form on side to the other (over net or local).
 
