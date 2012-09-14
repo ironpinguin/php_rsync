@@ -226,13 +226,11 @@ php_rsync_object_init(zend_class_entry *ze TSRMLS_DC)
     memset(&zrmo->zo, 0, sizeof(zend_object));
 
     zend_object_std_init(&zrmo->zo, ze TSRMLS_CC);
-    zend_hash_copy(zrmo->zo.properties, &ze->default_properties,
-            (copy_ctor_func_t) zval_add_ref,
-            (void*) &tmp, sizeof(zval *));
+    object_properties_init(&zrmo->zo, ze);
 
     zrmo->block_length = RS_DEFAULT_BLOCK_LEN;
     zrmo->strong_length = RS_DEFAULT_STRONG_LEN;
-    
+
     ret.handle = zend_objects_store_put(zrmo, NULL,
             (zend_objects_free_object_storage_t) php_rsync_object_destroy,
             NULL TSRMLS_CC);
