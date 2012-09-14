@@ -148,6 +148,9 @@ const zend_function_entry rsync_functions[] = {
 /* The main rsync class entry */
 static zend_class_entry *Rsync_ce;
 
+/* Handlers */
+static zend_object_handlers Rsync_object_handlers;
+
 /* {{{ Rsync_methods[] */
 const zend_function_entry Rsync_methods[] = {
     PHP_ME(Rsync, __construct, NULL, ZEND_ACC_PUBLIC)
@@ -235,8 +238,7 @@ php_rsync_object_init(zend_class_entry *ze TSRMLS_DC)
             (zend_objects_free_object_storage_t) php_rsync_object_destroy,
             NULL TSRMLS_CC);
 
-    ret.handlers = zend_get_std_object_handlers();
-    ret.handlers->clone_obj = NULL;
+    ret.handlers = (zend_object_handlers *) &Rsync_object_handlers;
 
     return ret;
 }
@@ -420,9 +422,12 @@ PHP_MINIT_FUNCTION(rsync)
 
     zend_class_entry ce;
 
-	INIT_CLASS_ENTRY(ce, "Rsync", Rsync_methods);
-	ce.create_object = php_rsync_object_init;
-	Rsync_ce = zend_register_internal_class(&ce TSRMLS_CC);
+    memcpy(&Rsync_object_handlers, zend_get_std_object_handlers(), sizeof(zend_object_handlers));
+    Rsync_object_handlers.clone_obj = NULL;
+
+    INIT_CLASS_ENTRY(ce, "Rsync", Rsync_methods);
+    ce.create_object = php_rsync_object_init;
+    Rsync_ce = zend_register_internal_class(&ce TSRMLS_CC);
 
     INIT_CLASS_ENTRY(ce, "RsyncException", NULL);
     RsyncException_ce = zend_register_internal_class_ex(
