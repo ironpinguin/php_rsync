@@ -150,14 +150,14 @@ static zend_class_entry *Rsync_ce;
 
 /* {{{ Rsync_methods[] */
 const zend_function_entry Rsync_methods[] = {
-	PHP_ME(Rsync, __construct, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Rsync, generateSignature, NULL, 	ZEND_ACC_PUBLIC)
-	PHP_ME(Rsync, generateDelta, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Rsync, patchFile, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Rsync, setLogCallback, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Rsync, setLogLevel, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(Rsync, getError, NULL, ZEND_ACC_PUBLIC)
-	{NULL, NULL, NULL}
+    PHP_ME(Rsync, __construct, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(Rsync, generateSignature, NULL,  ZEND_ACC_PUBLIC)
+    PHP_ME(Rsync, generateDelta, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(Rsync, patchFile, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(Rsync, setLogCallback, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(Rsync, setLogLevel, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(Rsync, getError, NULL, ZEND_ACC_PUBLIC)
+    {NULL, NULL, NULL}
 };
 /* }}} */
 
@@ -250,7 +250,7 @@ php_rsync_object_init(zend_class_entry *ze TSRMLS_DC)
 php_stream *
 php_rsync_file_open(zval **file, char *mode TSRMLS_DC)
 {
-	zval        *return_value;
+    zval        *return_value;
     php_stream  *stream = NULL;
     int         is_write;
     char        *string;
@@ -261,12 +261,12 @@ php_rsync_file_open(zval **file, char *mode TSRMLS_DC)
     if (Z_TYPE_PP(file) == IS_RESOURCE) {
         php_stream_from_zval(stream, file);
         if (FAILURE == php_stream_can_cast(stream, PHP_STREAM_AS_STDIO)) {
-        	zend_throw_exception_ex(
-				RsyncStreamNotCastableException_ce,
-				0 TSRMLS_CC,
-				"The stream for \"%s\" is not castable",
-				(stream && stream->orig_path) ? estrdup(stream->orig_path) : "''"
-        	);
+            zend_throw_exception_ex(
+                RsyncStreamNotCastableException_ce,
+                0 TSRMLS_CC,
+                "The stream for \"%s\" is not castable",
+                (stream && stream->orig_path) ? estrdup(stream->orig_path) : "''"
+            );
         }
     } else if (Z_TYPE_PP(file) == IS_STRING) {
         string = Z_STRVAL_PP(file);
@@ -276,24 +276,24 @@ php_rsync_file_open(zval **file, char *mode TSRMLS_DC)
         stream = php_stream_open_wrapper(string, mode, options, NULL);
 
         if (NULL == stream) {
-		type_string = is_write ? "write" : "read";
-		zend_throw_exception_ex(
-			RsyncFileIoException_ce,
-			0 TSRMLS_CC,
-			"Could not open \"%s\" for %s: %s",
-			string,
-			type_string,
-			strerror(errno)
-		);
+        type_string = is_write ? "write" : "read";
+        zend_throw_exception_ex(
+            RsyncFileIoException_ce,
+            0 TSRMLS_CC,
+            "Could not open \"%s\" for %s: %s",
+            string,
+            type_string,
+            strerror(errno)
+        );
         }
     } else {
-		convert_to_string(*file);
-    	zend_throw_exception_ex(
-    		RsyncInvalidArgumentException_ce,
-    		0 TSRMLS_CC,
-    		"Expected string or stream, \"%s\" was given", /* XXX give file and line */
-			estrdup(Z_STRVAL_PP(file))
-    	);
+        convert_to_string(*file);
+        zend_throw_exception_ex(
+            RsyncInvalidArgumentException_ce,
+            0 TSRMLS_CC,
+            "Expected string or stream, \"%s\" was given", /* XXX give file and line */
+            estrdup(Z_STRVAL_PP(file))
+        );
     }
 
     return stream;
@@ -428,22 +428,22 @@ PHP_MINIT_FUNCTION(rsync)
 
     INIT_CLASS_ENTRY(ce, "RsyncException", NULL);
     RsyncException_ce = zend_register_internal_class_ex(
-    	&ce, NULL, "exception" TSRMLS_CC
+        &ce, NULL, "exception" TSRMLS_CC
     );
 
     INIT_CLASS_ENTRY(ce, "RsyncStreamNotCastableException", NULL);
     RsyncStreamNotCastableException_ce = zend_register_internal_class_ex(
-    	&ce, RsyncException_ce, NULL TSRMLS_CC
+        &ce, RsyncException_ce, NULL TSRMLS_CC
     );
 
     INIT_CLASS_ENTRY(ce, "RsyncFileIoException", NULL);
     RsyncFileIoException_ce = zend_register_internal_class_ex(
-    	&ce, RsyncException_ce, NULL TSRMLS_CC
+        &ce, RsyncException_ce, NULL TSRMLS_CC
     );
 
     INIT_CLASS_ENTRY(ce, "RsyncInvalidArgumentException", NULL);
     RsyncInvalidArgumentException_ce = zend_register_internal_class_ex(
-    	&ce, RsyncException_ce, NULL TSRMLS_CC
+        &ce, RsyncException_ce, NULL TSRMLS_CC
     );
 
     REGISTER_LONG_CONSTANT("RSYNC_DONE", RS_DONE, CONST_CS | CONST_PERSISTENT);
@@ -535,17 +535,17 @@ php_rsync_generate_signature(zval **file, zval **sigfile, long block_length, lon
 {
     php_stream *infile_stream, *sigfile_stream;
     FILE *infile, *signaturfile;
-	int ret;
+    int ret;
     
     infile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
     if (NULL == infile_stream) {
-    	return RS_INTERNAL_ERROR;
+        return RS_INTERNAL_ERROR;
     }
 
     sigfile_stream = php_rsync_file_open(sigfile, "wb" TSRMLS_CC);
     if (NULL == sigfile_stream) {
-    	php_stream_close(infile_stream);
-    	return RS_INTERNAL_ERROR;
+        php_stream_close(infile_stream);
+        return RS_INTERNAL_ERROR;
     }
 
     php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, REPORT_ERRORS);
@@ -557,7 +557,7 @@ php_rsync_generate_signature(zval **file, zval **sigfile, long block_length, lon
     if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
     if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(sigfile_stream);
     
-	return ret;
+    return ret;
 }
 /* }}} */
 
@@ -570,10 +570,10 @@ PHP_FUNCTION(rsync_generate_signature)
 
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZ", &file, &sigfile) == FAILURE) {
         RETURN_LONG(RS_INTERNAL_ERROR);
-		return;
-	}
+        return;
+    }
     
-	RSYNC_G(ret) = php_rsync_generate_signature(file, sigfile, RSYNC_G(block_length), RSYNC_G(strong_length) TSRMLS_CC);
+    RSYNC_G(ret) = php_rsync_generate_signature(file, sigfile, RSYNC_G(block_length), RSYNC_G(strong_length) TSRMLS_CC);
 
     RETURN_LONG(RSYNC_G(ret));
 }
@@ -586,11 +586,11 @@ php_rsync_generate_delta(zval **sigfile, zval **file, zval **deltafile TSRMLS_DC
     php_stream *infile_stream, *sigfile_stream, *deltafile_stream;
     FILE *signaturfile, *infile, *delta;
     rs_signature_t  *sumset;
-	int ret;
+    int ret;
 
     sigfile_stream = php_rsync_file_open(sigfile, "rb" TSRMLS_CC);
     if (NULL == sigfile_stream) {
-    	return RS_INTERNAL_ERROR;
+        return RS_INTERNAL_ERROR;
     }
 
     php_stream_cast(sigfile_stream, PHP_STREAM_AS_STDIO, (void**)&signaturfile, 1);
@@ -610,14 +610,14 @@ php_rsync_generate_delta(zval **sigfile, zval **file, zval **deltafile TSRMLS_DC
 
     infile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
     if (NULL == infile_stream) {
-    	php_stream_close(sigfile_stream);
-    	return RS_INTERNAL_ERROR;
+        php_stream_close(sigfile_stream);
+        return RS_INTERNAL_ERROR;
     }
     deltafile_stream = php_rsync_file_open(deltafile, "wb" TSRMLS_CC);
     if (NULL == deltafile_stream) {
-    	php_stream_close(infile_stream);
-    	php_stream_close(sigfile_stream);
-    	return RS_INTERNAL_ERROR;
+        php_stream_close(infile_stream);
+        php_stream_close(sigfile_stream);
+        return RS_INTERNAL_ERROR;
     }
 
     php_stream_cast(infile_stream, PHP_STREAM_AS_STDIO, (void**)&infile, 1);
@@ -630,7 +630,7 @@ php_rsync_generate_delta(zval **sigfile, zval **file, zval **deltafile TSRMLS_DC
     if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(infile_stream);
     if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(deltafile_stream);
 
-	return ret;
+    return ret;
 }
 /* }}} */
 
@@ -642,11 +642,11 @@ PHP_FUNCTION(rsync_generate_delta)
     int argc = ZEND_NUM_ARGS();
 
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &sigfile, &file, &deltafile) == FAILURE) {
-		RETURN_LONG(RS_INTERNAL_ERROR);
+        RETURN_LONG(RS_INTERNAL_ERROR);
         return;
-	}
+    }
 
-	RSYNC_G(ret) = php_rsync_generate_delta(sigfile, file, deltafile TSRMLS_CC);
+    RSYNC_G(ret) = php_rsync_generate_delta(sigfile, file, deltafile TSRMLS_CC);
 
     RETURN_LONG(RSYNC_G(ret));
 }
@@ -658,22 +658,22 @@ php_rsync_patch_file(zval **file, zval **deltafile, zval **newfile TSRMLS_DC)
 {
     FILE *basis_file, *delta_file, *new_file;
     php_stream *basisfile_stream, *newfile_stream, *deltafile_stream;
-	int ret;
+    int ret;
 
     basisfile_stream = php_rsync_file_open(file, "rb" TSRMLS_CC);
     if (NULL == basisfile_stream) {
-    	return RS_INTERNAL_ERROR;
+        return RS_INTERNAL_ERROR;
     }
     deltafile_stream = php_rsync_file_open(deltafile, "rb" TSRMLS_CC);
     if (NULL == deltafile_stream) {
-    	php_stream_close(basisfile_stream);
-    	return RS_INTERNAL_ERROR;
+        php_stream_close(basisfile_stream);
+        return RS_INTERNAL_ERROR;
     }
     newfile_stream = php_rsync_file_open(newfile, "wb" TSRMLS_CC);
     if (NULL == newfile_stream) {
-    	php_stream_close(basisfile_stream);
-    	php_stream_close(deltafile_stream);
-    	return RS_INTERNAL_ERROR;
+        php_stream_close(basisfile_stream);
+        php_stream_close(deltafile_stream);
+        return RS_INTERNAL_ERROR;
     }
 
     php_stream_cast(basisfile_stream, PHP_STREAM_AS_STDIO, (void**)&basis_file, 1);
@@ -687,7 +687,7 @@ php_rsync_patch_file(zval **file, zval **deltafile, zval **newfile TSRMLS_DC)
     if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(newfile_stream);
     if (Z_TYPE_PP(file) != IS_RESOURCE) php_stream_close(deltafile_stream);
 
-	return ret;
+    return ret;
 }
 /* }}} */
 
@@ -699,11 +699,11 @@ PHP_FUNCTION(rsync_patch_file)
     int argc = ZEND_NUM_ARGS();
 
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &file, &deltafile, &newfile) == FAILURE) {
-		RETURN_LONG(RS_INTERNAL_ERROR);
+        RETURN_LONG(RS_INTERNAL_ERROR);
         return;
-	}
+    }
 
-	RSYNC_G(ret) = php_rsync_patch_file(file, deltafile, newfile TSRMLS_CC);
+    RSYNC_G(ret) = php_rsync_patch_file(file, deltafile, newfile TSRMLS_CC);
 
     RETURN_LONG(RSYNC_G(ret));
 }
@@ -746,11 +746,11 @@ PHP_FUNCTION(rsync_set_log_level)
     }
 
     if (level < RS_LOG_EMERG || level > RS_LOG_DEBUG) {
-    	zend_throw_exception(
-    		RsyncInvalidArgumentException_ce,
-    		"Invalid log level value",
-    		0 TSRMLS_CC
-    	);
+        zend_throw_exception(
+            RsyncInvalidArgumentException_ce,
+            "Invalid log level value",
+            0 TSRMLS_CC
+        );
         return;
     }
 
@@ -778,27 +778,27 @@ PHP_FUNCTION(rsync_error)
 /* {{{ proto Rsync::__costruct(array options) the main rsync class constructor */
 PHP_METHOD(Rsync, __construct)
 {
-	zval *opts = NULL, **blen, **slen;
-	struct ze_rsync_main_obj *zrmo;
+    zval *opts = NULL, **blen, **slen;
+    struct ze_rsync_main_obj *zrmo;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|a", &opts) == FAILURE) {
-		return;
-	}
+    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|a", &opts) == FAILURE) {
+        return;
+    }
 
-	zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	zrmo->block_length = RS_DEFAULT_BLOCK_LEN;
-	zrmo->strong_length = RS_DEFAULT_STRONG_LEN;
-	if (opts) {
-		if (zend_hash_find(Z_ARRVAL_P(opts), "block_length", sizeof("block_length"), (void **)&blen) != FAILURE) {
-			zrmo->block_length = Z_LVAL_PP(blen);
-		}
+    zrmo->block_length = RS_DEFAULT_BLOCK_LEN;
+    zrmo->strong_length = RS_DEFAULT_STRONG_LEN;
+    if (opts) {
+        if (zend_hash_find(Z_ARRVAL_P(opts), "block_length", sizeof("block_length"), (void **)&blen) != FAILURE) {
+            zrmo->block_length = Z_LVAL_PP(blen);
+        }
 
-		if (zend_hash_find(Z_ARRVAL_P(opts), "strong_length", sizeof("strong_length"), (void **)&slen) != FAILURE) {
-			zrmo->strong_length = Z_LVAL_PP(slen);
-		}
-	}
-	/* XXX init also filenames or streams internally and make some method arguments optional */
+        if (zend_hash_find(Z_ARRVAL_P(opts), "strong_length", sizeof("strong_length"), (void **)&slen) != FAILURE) {
+            zrmo->strong_length = Z_LVAL_PP(slen);
+        }
+    }
+    /* XXX init also filenames or streams internally and make some method arguments optional */
 }
 /* }}} */
 
@@ -808,16 +808,16 @@ PHP_METHOD(Rsync, generateSignature)
 {
     zval **file = NULL, **sigfile = NULL;
     int argc = ZEND_NUM_ARGS();
-	struct ze_rsync_main_obj *zrmo;
+    struct ze_rsync_main_obj *zrmo;
 
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZ", &file, &sigfile) == FAILURE) {
         RETURN_LONG(RS_INTERNAL_ERROR);
-		return;
-	}
+        return;
+    }
 
-	zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
     
-	zrmo->ret = php_rsync_generate_signature(file, sigfile, zrmo->block_length, zrmo->strong_length TSRMLS_CC);
+    zrmo->ret = php_rsync_generate_signature(file, sigfile, zrmo->block_length, zrmo->strong_length TSRMLS_CC);
 
     RETURN_LONG(zrmo->ret);
 }
@@ -829,16 +829,16 @@ PHP_METHOD(Rsync, generateDelta)
 {
     zval **sigfile = NULL, **file = NULL, **deltafile = NULL;
     int argc = ZEND_NUM_ARGS();
-	struct ze_rsync_main_obj *zrmo;
+    struct ze_rsync_main_obj *zrmo;
 
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &sigfile, &file, &deltafile) == FAILURE) {
-		RETURN_LONG(RS_INTERNAL_ERROR);
+        RETURN_LONG(RS_INTERNAL_ERROR);
         return;
-	}
+    }
 
-	zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	zrmo->ret = php_rsync_generate_delta(sigfile, file, deltafile TSRMLS_CC);
+    zrmo->ret = php_rsync_generate_delta(sigfile, file, deltafile TSRMLS_CC);
 
     RETURN_LONG(zrmo->ret);
 }
@@ -850,16 +850,16 @@ PHP_METHOD(Rsync, patchFile)
 {
     zval **file = NULL, **deltafile = NULL, **newfile = NULL;
     int argc = ZEND_NUM_ARGS();
-	struct ze_rsync_main_obj *zrmo;
+    struct ze_rsync_main_obj *zrmo;
 
     if (zend_parse_parameters(argc TSRMLS_CC, "ZZZ", &file, &deltafile, &newfile) == FAILURE) {
-		RETURN_LONG(RS_INTERNAL_ERROR);
+        RETURN_LONG(RS_INTERNAL_ERROR);
         return;
-	}
+    }
 
-	zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
+    zrmo = (struct ze_rsync_main_obj *) zend_object_store_get_object(getThis() TSRMLS_CC);
 
-	zrmo->ret = php_rsync_patch_file(file, deltafile, newfile TSRMLS_CC);
+    zrmo->ret = php_rsync_patch_file(file, deltafile, newfile TSRMLS_CC);
 
     RETURN_LONG(zrmo->ret);
 }
